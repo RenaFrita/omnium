@@ -13,9 +13,6 @@
     "turbo": "^2",
     "typescript": "^5"
   },
-  "engines": {
-    "node": ">=22"
-  },
   "packageManager": "npm@10.9.2",
   "workspaces": [
     "apps/*",
