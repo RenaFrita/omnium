@@ -45,6 +45,14 @@ export default function Home() {
         Shoulder dislocates Scapula shrugs (push + pull) Thoracic rotations
         Pancake stretch Jefferson curl (leve) Hip flexor stretches Bridge
         (progressões) Wall slides
+        <p>
+          O “sweet spot” existe sim, e não é magia — é química. Aqui vai direto
+          ao ponto, sem paninhos quentes: Temperatura e tempo ideais para
+          descarboxilar cannabis Para converter THCA → THC (e CBDA → CBD) sem
+          destruir canabinoides nem torrar terpenos: THC (flores para uso
+          recreativo/regular) Temperatura: 110–120 °C Tempo: 30–45 min 115 °C
+          por ~35 min costuma ser o ponto perfeito.
+        </p>
       </main>
     </div>
   )
