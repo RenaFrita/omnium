@@ -1,0 +1,21 @@
+{
+  "name": "hyperliquid-orderflow-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Order flow + liquidity engine for Hyperliquid (backend thin service)",
+  "author": "you",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint . --ext .ts"
+  },
+  "dependencies": {
+    "ws": "^8"
+  }
+}
