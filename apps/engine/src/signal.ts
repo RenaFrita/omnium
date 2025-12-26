@@ -2,7 +2,6 @@ import { state } from './state'
 import { CONFIG } from './config'
 import { detectAbsorption } from './absorption'
 import { deltaDivergence } from './divergence'
-import { vwapStd } from './vwap'
 import { broadcast } from './ws'
 
 export function evaluate() {
@@ -14,35 +13,47 @@ export function evaluate() {
   const reasonsLong: string[] = []
   const reasonsShort: string[] = []
 
-  const deviation = price - state.vwap.value
-  const vwapThreshold = CONFIG.VWAP_SIGMA * vwapStd()
+  // ===== Z-SCORES =====
+  const vwapDiff = price - state.vwap.value
+  const zVWAP = state.z.vwap.update(vwapDiff)
+  const zDelta = state.z.delta.update(state.cvd)
 
-  if (deviation > vwapThreshold) {
+  // ===== CONTEXTO (VWAP) =====
+  if (zVWAP > CONFIG.Z.VWAP) {
     scoreShort += 2
-    reasonsShort.push('vwap_above_sigma')
-  } else if (deviation < -vwapThreshold) {
-    scoreLong += 2
-    reasonsLong.push('vwap_below_sigma')
+    reasonsShort.push('vwap_z_high')
   }
 
+  if (zVWAP < -CONFIG.Z.VWAP) {
+    scoreLong += 2
+    reasonsLong.push('vwap_z_low')
+  }
+
+  // ===== ORDERFLOW (ABSORPTION) =====
   if (detectAbsorption('sell')) {
     scoreLong += 3
     reasonsLong.push('sell_absorption')
   }
+
   if (detectAbsorption('buy')) {
     scoreShort += 3
     reasonsShort.push('buy_absorption')
   }
 
+  // ===== DELTA CONFIRM =====
   const delta = deltaDivergence()
-  if (delta === 'bullish') {
-    scoreLong += 3
-    reasonsLong.push('delta_bullish')
-  } else if (delta === 'bearish') {
-    scoreShort += 3
-    reasonsShort.push('delta_bearish')
+
+  if (delta === 'bullish' && zDelta > CONFIG.Z.DELTA) {
+    scoreLong += 2
+    reasonsLong.push('delta_bullish_z')
   }
 
+  if (delta === 'bearish' && zDelta < -CONFIG.Z.DELTA) {
+    scoreShort += 2
+    reasonsShort.push('delta_bearish_z')
+  }
+
+  // ===== EMIT =====
   if (scoreLong >= CONFIG.SCORE_MIN && scoreLong > scoreShort) {
     broadcast({
       direction: 'long',
@@ -50,7 +61,7 @@ export function evaluate() {
       score: scoreLong,
       reasons: reasonsLong,
     })
-    console.log(price, 'LONG', scoreLong, reasonsLong)
+    console.log(price, 'LONG', scoreLong, reasonsLong, { zVWAP, zDelta })
   } else if (scoreShort >= CONFIG.SCORE_MIN && scoreShort > scoreLong) {
     broadcast({
       direction: 'short',
@@ -58,8 +69,8 @@ export function evaluate() {
       score: scoreShort,
       reasons: reasonsShort,
     })
-    console.log(price, 'SHORT', scoreShort, reasonsShort)
+    console.log(price, 'SHORT', scoreShort, reasonsShort, { zVWAP, zDelta })
   } else {
-    console.log(price, 'NO SIGNAL', { scoreLong, scoreShort })
+    console.log(price, 'NO SIGNAL', { scoreLong, scoreShort, zVWAP, zDelta })
   }
 }

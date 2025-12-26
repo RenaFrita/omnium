@@ -5,4 +5,8 @@ export const CONFIG = {
   SCORE_MIN: 10,
   ABSORPTION_VOL: 120,
   MAX_PRICE_MOVE: 5,
+  Z: {
+    VWAP: 2.0,
+    DELTA: 1.5,
+  },
 }
