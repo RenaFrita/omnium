@@ -1,41 +1,70 @@
-import { state } from './state'
 import { updateVWAP } from './vwap'
+import { state } from './state'
 
-type L2Level = {
-  side: 'B' | 'A' // B = bid, A = ask
+interface WsLevel {
   px: string
   sz: string
+  n: number
 }
 
-export function onOrderBook(msg: any) {
-  if (!msg?.levels || !Array.isArray(msg.levels)) return
+interface WsBook {
+  coin: string
+  levels: [WsLevel[], WsLevel[]]
+  time: number
+}
 
-  for (const lvl of msg.levels as L2Level[]) {
-    const price = +lvl.px
-    const size = +lvl.sz
+interface WsTrade {
+  coin: string
+  side: string
+  px: string
+  sz: string
+  hash: string
+  time: number
+  tid: number
+  users: [string, string]
+}
 
-    if (lvl.side === 'B') {
-      if (size === 0) state.bids.delete(price)
-      else state.bids.set(price, size)
-    } else if (lvl.side === 'A') {
-      if (size === 0) state.asks.delete(price)
-      else state.asks.set(price, size)
-    }
+export function onOrderBook(book: WsBook) {
+  const [bidsArr, asksArr] = book.levels
+
+  for (const lvl of bidsArr) {
+    const price = parseFloat(lvl.px)
+    const size = parseFloat(lvl.sz)
+    if (isNaN(price) || isNaN(size)) continue
+
+    if (size === 0) state.bids.delete(price)
+    else state.bids.set(price, size)
+  }
+
+  for (const lvl of asksArr) {
+    const price = parseFloat(lvl.px)
+    const size = parseFloat(lvl.sz)
+    if (isNaN(price) || isNaN(size)) continue
+
+    if (size === 0) state.asks.delete(price)
+    else state.asks.set(price, size)
   }
 }
 
-export function onTrade(t: any) {
+export function onTrade(t: WsTrade) {
+  const price = parseFloat(t.px)
+  const size = parseFloat(t.sz)
+  if (isNaN(price) || isNaN(size)) return
+
   const trade = {
-    price: +t.p,
-    size: +t.s,
+    price,
+    size,
     side: t.side === 'B' ? 'buy' : 'sell',
-    ts: Date.now(),
+    ts: t.time,
+    hash: t.hash,
+    tid: t.tid,
+    users: t.users,
   }
 
   state.trades.push(trade)
-  state.prices.push(trade.price)
+  state.prices.push(price)
 
-  state.cvd += trade.side === 'buy' ? trade.size : -trade.size
+  state.cvd += trade.side === 'buy' ? size : -size
 
   updateVWAP(trade)
   prune()
