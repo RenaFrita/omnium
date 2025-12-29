@@ -3,7 +3,7 @@ export class RollingZ {
   private variance = 0
   private initialized = false
 
-  constructor(private alpha = 0.05) {} // ~20 samples efetivos
+  constructor(private alpha = 0.05) {}
 
   update(x: number) {
     if (!this.initialized) {
