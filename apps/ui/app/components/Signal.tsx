@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function SignalListener() {
   const long = useRef<HTMLAudioElement | null>(null)
   const short = useRef<HTMLAudioElement | null>(null)
   const open = useRef<HTMLAudioElement | null>(null)
   const close = useRef<HTMLAudioElement | null>(null)
+  const [{ shortCount, longCount }, setCount] = useState({
+    shortCount: 0,
+    longCount: 0,
+  })
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:3001')
@@ -23,6 +27,11 @@ export default function SignalListener() {
       const signal = JSON.parse(event.data)
       console.log('Signal received', signal)
 
+      setCount((state) =>
+        signal.direction === 'long'
+          ? { ...state, longCount: state.longCount + 1 }
+          : { ...state, shortCount: state.shortCount + 1 }
+      )
       const audio = signal.direction === 'long' ? long.current : short.current
 
       if (audio) {
@@ -33,5 +42,11 @@ export default function SignalListener() {
     return () => ws.close()
   }, [])
 
-  return <button onClick={() => open.current?.play()}>open trade</button>
+  return (
+    <>
+      <h1>Long count: {longCount}</h1>
+      <h1>Short count: {shortCount}</h1>
+      <button onClick={() => open.current?.play()}>open trade</button>
+    </>
+  )
 }

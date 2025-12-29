@@ -8,8 +8,6 @@ export function updateVWAP(trade: { price: number; size: number }) {
 
   const prevVWAP = state.vwap.value
   state.vwap.value = state.vwap.sumPV / state.vwap.sumV
-
-  // variância incremental (para std dev)
   state.vwap.variance += size * (price - prevVWAP) * (price - state.vwap.value)
 }
 
