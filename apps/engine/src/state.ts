@@ -20,8 +20,27 @@ export const state = {
     value: 0,
     variance: 0,
   },
+
   z: {
     vwap: new RollingZ(0.03),
     delta: new RollingZ(0.05),
+  },
+
+  auction: {
+    phase: 'idle' as 'idle' | 'sweep' | 'absorption' | 'reclaim',
+    side: null as 'buy' | 'sell' | null,
+    startPrice: 0,
+    lastTs: 0,
+  },
+
+  liquidityContext: {
+    activeZonePrice: 0,
+    enteredTs: 0,
+  },
+
+  lastSignalTs: 0,
+
+  window: {
+    startTs: 0,
   },
 }

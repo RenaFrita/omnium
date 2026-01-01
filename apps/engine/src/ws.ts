@@ -9,3 +9,7 @@ export function broadcast(msg: any) {
     }
   })
 }
+
+export function broadcastMetrics(metrics: any) {
+  broadcast(metrics)
+}

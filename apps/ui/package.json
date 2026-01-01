@@ -11,6 +11,11 @@
   "dependencies": {
     "next": "^16",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "lucide-react": "^0.263.1",
+    "recharts": "^2.8.0",
+    "framer-motion": "^10.16.4",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^1.14.0"
   }
 }

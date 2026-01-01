@@ -2,7 +2,15 @@ import { state } from './state'
 import { CONFIG } from './config'
 import { detectAbsorption } from './absorption'
 import { deltaDivergence } from './divergence'
+import { detectFailedAuction } from './sequencing'
+import { detectLiquidityReaction } from './liquiditySignal'
 import { broadcast } from './ws'
+
+// Store current scores for metrics
+export let currentScores = {
+  scoreLong: 0,
+  scoreShort: 0,
+}
 
 export function evaluate() {
   const price = state.prices.at(-1)
@@ -40,6 +48,30 @@ export function evaluate() {
     reasonsShort.push('buy_absorption')
   }
 
+  // ===== LIQUIDEZ (MAP REACTION) =====
+  const liq = detectLiquidityReaction()
+
+  if (liq === 'bid_support') {
+    scoreLong += 2
+    reasonsLong.push('liq_bid_support')
+  }
+
+  if (liq === 'ask_resistance') {
+    scoreShort += 2
+    reasonsShort.push('liq_ask_resistance')
+  }
+
+  // ===== SEQUENCING (FAILED AUCTION) =====
+  if (detectFailedAuction('sell')) {
+    scoreLong += 1.5
+    reasonsLong.push('failed_auction_sell')
+  }
+
+  if (detectFailedAuction('buy')) {
+    scoreShort += 1.5
+    reasonsShort.push('failed_auction_buy')
+  }
+
   // ===== DELTA CONFIRM =====
   const delta = deltaDivergence()
 
@@ -53,6 +85,13 @@ export function evaluate() {
     reasonsShort.push('delta_bearish_z')
   }
 
+  // Store current scores for metrics
+  currentScores = {
+    scoreLong,
+    scoreShort,
+  }
+
+  const timestamp = new Date()
   // ===== EMIT =====
   if (scoreLong >= CONFIG.SCORE_MIN && scoreLong > scoreShort) {
     broadcast({
@@ -60,6 +99,7 @@ export function evaluate() {
       price,
       score: scoreLong,
       reasons: reasonsLong,
+      timestamp,
     })
     console.log(price, 'LONG', scoreLong, reasonsLong, { zVWAP, zDelta })
   } else if (scoreShort >= CONFIG.SCORE_MIN && scoreShort > scoreLong) {
@@ -68,9 +108,9 @@ export function evaluate() {
       price,
       score: scoreShort,
       reasons: reasonsShort,
+      timestamp,
     })
+
     console.log(price, 'SHORT', scoreShort, reasonsShort, { zVWAP, zDelta })
-  } else {
-    console.log(price, 'NO SIGNAL', { scoreLong, scoreShort, zVWAP, zDelta })
   }
 }
