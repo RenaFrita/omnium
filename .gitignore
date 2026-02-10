@@ -64,3 +64,4 @@
 
 # Vercel
 .vercel
+/generated/prisma

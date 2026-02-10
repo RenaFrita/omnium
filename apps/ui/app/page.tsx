@@ -1,9 +1,6 @@
-import Signal from './components/Signal'
-
-export default function Home() {
+const Home = () => {
   return (
-    <main>
-      <Signal />
-    </main>
-  )
+  <div />)
 }
+
+export default Home
