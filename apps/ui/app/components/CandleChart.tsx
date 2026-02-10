@@ -1,7 +1,7 @@
 'use client'
 
 import { useHyperliquid } from '../hooks/useHyperliquid'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import * as d3 from 'd3'
 import {
   calculateEMA,
@@ -10,6 +10,7 @@ import {
   detectStructure,
   detectVolumeSpike,
 } from '../helpers'
+import { useChartDimensions } from '../hooks/useChartDimensions'
 
 interface Props {
   interval: string
@@ -19,46 +20,48 @@ interface Props {
 export const CandleChart = ({ coin, interval }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
+
   const candles = useHyperliquid(coin, interval)
+  const dimensions = useChartDimensions(containerRef)
 
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  // ================= INDICATORS =================
 
-  useEffect(() => {
-    if (!containerRef.current) return
+  const { ema20, ema50, ema100, ema200, rsi, bos, volumeSpike } =
+    useMemo(() => {
+      const closes: number[] = []
+      const volumes: number[] = []
 
-    const observer = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect
-      setDimensions({ width, height })
-    })
+      // Preenche closes e volumes em um único loop
+      for (let i = 0; i < candles.length; i++) {
+        closes.push(candles[i].c)
+        volumes.push(candles[i].v)
+      }
 
-    observer.observe(containerRef.current)
-    return () => observer.disconnect()
-  }, [])
+      // Calcula indicadores
+      const ema20 = calculateEMA(closes, 20)
+      const ema50 = calculateEMA(closes, 50)
+      const ema100 = calculateEMA(closes, 100)
+      const ema200 = calculateEMA(closes, 200)
+      const rsi = calculateRSI(closes, 14)
+
+      // Detecta estrutura e BOS
+      const structure = detectStructure(candles)
+      const bos = detectBOS(structure)
+
+      // Detecta spikes de volume
+      const volumeSpike = detectVolumeSpike(volumes)
+
+      return { ema20, ema50, ema100, ema200, rsi, bos, volumeSpike }
+    }, [candles])
+
+  // ================= DRAW =================
 
   useEffect(() => {
     const { width, height } = dimensions
     if (!candles.length || !width || !height) return
 
-    // ================= INDICATORS =================
-
-    const closes = candles.map((c) => c.c)
-    const volumes = candles.map((c) => c.v)
-
-    const ema20 = calculateEMA(closes, 20)
-    const ema50 = calculateEMA(closes, 50)
-    const ema100 = calculateEMA(closes, 100)
-    const ema200 = calculateEMA(closes, 200)
-    const rsi = calculateRSI(closes, 14)
-
-    const structure = detectStructure(candles)
-    const bos = detectBOS(structure)
-    const volumeSpike = detectVolumeSpike(volumes)
-
-    // ================= LAYOUT =================
-
     const margin = { top: 20, right: 50, bottom: 30, left: 60 }
-    const rsiGap = 30 // espaço entre o gráfico de preço e RSI
-
+    const rsiGap = 30
     const rsiHeight = height * 0.25
     const priceHeight = height - rsiHeight - margin.bottom - rsiGap
 
@@ -67,20 +70,21 @@ export const CandleChart = ({ coin, interval }: Props) => {
     const innerRsiHeight = rsiHeight - 20
 
     const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
+    svg.attr('viewBox', `0 0 ${width} ${height}`)
 
-    svg
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .style('width', '100%')
-      .style('height', '100%')
+    // ================= GROUPS =================
 
-    const priceG = svg
-      .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`)
+    let priceG = svg.select<SVGGElement>('.price-group')
+    if (priceG.empty()) {
+      priceG = svg.append('g').attr('class', 'price-group')
+    }
+    priceG.attr('transform', `translate(${margin.left},${margin.top})`)
 
-    const rsiG = svg
-      .append('g')
-      .attr('transform', `translate(${margin.left},${priceHeight + rsiGap})`) // adiciona gap
+    let rsiG = svg.select<SVGGElement>('.rsi-group')
+    if (rsiG.empty()) {
+      rsiG = svg.append('g').attr('class', 'rsi-group')
+    }
+    rsiG.attr('transform', `translate(${margin.left},${priceHeight + rsiGap})`)
 
     // ================= SCALES =================
 
@@ -89,7 +93,10 @@ export const CandleChart = ({ coin, interval }: Props) => {
 
     const x = d3
       .scaleTime()
-      .domain([new Date(timeExtent[0] - step), new Date(timeExtent[1] + step)])
+      .domain([
+        new Date(timeExtent[0] - step / 2),
+        new Date(timeExtent[1] + step / 2),
+      ])
       .range([0, innerWidth])
 
     const y = d3
@@ -97,7 +104,7 @@ export const CandleChart = ({ coin, interval }: Props) => {
       .domain([
         d3.min(candles, (d) => d.l)! * 0.995,
         d3.max(candles, (d) => d.h)! * 1.005,
-      ]) // margem extra
+      ])
       .nice()
       .range([innerPriceHeight, 0])
 
@@ -108,16 +115,27 @@ export const CandleChart = ({ coin, interval }: Props) => {
 
     // ================= AXES =================
 
-    // Price axes
     priceG
-      .append('g')
+      .selectAll<SVGGElement, null>('.x-axis')
+      .data([null])
+      .join('g')
+      .attr('class', 'x-axis')
       .attr('transform', `translate(0,${innerPriceHeight})`)
       .call(d3.axisBottom(x))
 
-    priceG.append('g').call(d3.axisLeft(y))
+    priceG
+      .selectAll<SVGGElement, null>('.y-axis')
+      .data([null])
+      .join('g')
+      .attr('class', 'y-axis')
+      .call(d3.axisLeft(y))
 
-    // RSI Y axis (0, 50, 100)
-    rsiG.append('g').call(d3.axisLeft(rsiScale).tickValues([0, 50, 100]))
+    rsiG
+      .selectAll<SVGGElement, null>('.rsi-axis')
+      .data([null])
+      .join('g')
+      .attr('class', 'rsi-axis')
+      .call(d3.axisLeft(rsiScale).tickValues([0, 50, 100]))
 
     // ================= CANDLES =================
 
@@ -127,22 +145,24 @@ export const CandleChart = ({ coin, interval }: Props) => {
     )
     const candleWidth = Math.max(2, (minDistance ?? 10) * 0.6)
 
+    // Wicks
     priceG
-      .selectAll('.wick')
+      .selectAll<SVGLineElement, typeof candles>('.wick')
       .data(candles)
-      .enter()
-      .append('line')
+      .join('line')
+      .attr('class', 'wick')
       .attr('x1', (d) => x(new Date(d.t)))
       .attr('x2', (d) => x(new Date(d.t)))
       .attr('y1', (d) => y(d.h))
       .attr('y2', (d) => y(d.l))
       .attr('stroke', (d) => (d.c >= d.o ? '#16a34a' : '#dc2626'))
 
+    // Bodies
     priceG
-      .selectAll('.body')
+      .selectAll<SVGRectElement, typeof candles>('.body')
       .data(candles)
-      .enter()
-      .append('rect')
+      .join('rect')
+      .attr('class', 'body')
       .attr('x', (d) => x(new Date(d.t)) - candleWidth / 2)
       .attr('y', (d) => y(Math.max(d.o, d.c)))
       .attr('width', candleWidth)
@@ -151,98 +171,62 @@ export const CandleChart = ({ coin, interval }: Props) => {
       .attr('stroke', (_, i) => (volumeSpike[i] ? '#facc15' : 'none'))
       .attr('stroke-width', (_, i) => (volumeSpike[i] ? 2 : 0))
 
-    // ================= EMA =================
+    // ================= BOS =================
+    priceG
+      .selectAll<SVGCircleElement, typeof candles>('.bos')
+      .data(candles)
+      .join('circle')
+      .attr('class', 'bos')
+      .attr('cx', (d) => x(new Date(d.t)))
+      .attr('cy', (d, i) => (bos[i] ? y(Math.max(d.o, d.c, d.h)) - 8 : -100))
+      .attr('r', (_, i) => (bos[i] ? 4 : 0))
+      .attr('fill', 'purple')
 
+    // ================= EMA =================
     const priceLine = d3
       .line<number>()
       .defined((d) => d !== undefined)
       .x((_, i) => x(new Date(candles[i].t)))
       .y((d) => y(d))
 
+    const emaPaths = [
+      { data: ema20, color: '#3b82f6', key: 'ema20' },
+      { data: ema50, color: '#f59e0b', key: 'ema50' },
+      { data: ema100, color: '#eca1a6', key: 'ema100' },
+      { data: ema200, color: '#d6cbd3', key: 'ema200' },
+    ]
+    
     priceG
-      .append('path')
-      .datum(ema20)
+      .selectAll<
+        SVGPathElement,
+        { data: number[]; color: string; key: string }
+      >('.ema')
+      .data(emaPaths, (d) => d.key)
+      .join('path')
+      .attr('class', 'ema')
       .attr('fill', 'none')
-      .attr('stroke', '#3b82f6')
       .attr('stroke-width', 1.5)
-      .attr('d', priceLine)
-
-    priceG
-      .append('path')
-      .datum(ema50)
-      .attr('fill', 'none')
-      .attr('stroke', '#f59e0b')
-      .attr('stroke-width', 1.5)
-      .attr('d', priceLine)
-
-    priceG
-      .append('path')
-      .datum(ema100)
-      .attr('fill', 'none')
-      .attr('stroke', '#eca1a6')
-      .attr('stroke-width', 1.5)
-      .attr('d', priceLine)
-      
-     priceG
-      .append('path')
-      .datum(ema200)
-      .attr('fill', 'none')
-      .attr('stroke', '#d6cbd3')
-      .attr('stroke-width', 1.5)
-      .attr('d', priceLine) 
-
-    // ================= BOS =================
-
-    priceG
-      .selectAll('.bos')
-      .data(candles)
-      .enter()
-      .append('circle')
-      .attr('cx', (d) => x(new Date(d.t)))
-      .attr('cy', (d, i) => (bos[i] ? y(d.h) - 8 : -100))
-      .attr('r', (_, i) => (bos[i] ? 4 : 0))
-      .attr('fill', 'purple')
+      .attr('stroke', (d) => d.color)
+      .attr('d', (d) => priceLine(d.data))
 
     // ================= RSI =================
-
-    // RSI guide lines
-    rsiG
-      .append('line')
-      .attr('x1', 0)
-      .attr('x2', innerWidth)
-      .attr('y1', rsiScale(70))
-      .attr('y2', rsiScale(70))
-      .attr('stroke', '#444')
-      .attr('stroke-dasharray', '4')
-
-    rsiG
-      .append('line')
-      .attr('x1', 0)
-      .attr('x2', innerWidth)
-      .attr('y1', rsiScale(30))
-      .attr('y2', rsiScale(30))
-      .attr('stroke', '#444')
-      .attr('stroke-dasharray', '4')
-
-    const rsiData = candles.map((c, i) => ({
-      t: c.t,
-      value: rsi[i],
-    }))
-
+    const rsiData = candles.map((c, i) => ({ t: c.t, value: rsi[i] }))
     const rsiLine = d3
-      .line<{ t: number; value: number | undefined }>()
+      .line<{ t: number; value: number }>()
       .defined((d) => d.value !== undefined)
       .x((d) => x(new Date(d.t)))
-      .y((d) => rsiScale(d.value as number))
+      .y((d) => rsiScale(d.value))
 
     rsiG
-      .append('path')
-      .datum(rsiData)
+      .selectAll<SVGPathElement, (typeof rsiData)[]>('.rsi-line')
+      .data([rsiData])
+      .join('path')
+      .attr('class', 'rsi-line')
       .attr('fill', 'none')
       .attr('stroke', '#a855f7')
       .attr('stroke-width', 1.5)
       .attr('d', rsiLine)
-  }, [candles, dimensions])
+  }, [candles, dimensions, ema20, ema50, ema100, ema200, rsi, volumeSpike, bos])
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%' }}>

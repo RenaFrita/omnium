@@ -48,7 +48,7 @@ export const useHyperliquid = (coin: string, interval: string = '1m') => {
           return prev.map((c) => (c.t === candle.t ? candle : c))
         }
 
-        return [...prev, candle].slice(-30)
+        return [...prev, candle].slice(-800)
       })
     }
   }, [])
