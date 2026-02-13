@@ -21,7 +21,7 @@ export const Chart = ({ interval }: Props) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: "column", width: '100%', height: '100%' }}>
-      <div style={{ display: 'flex', gap: 10, padding: 8 }}>
+      <div style={{ display: 'flex', gap: 10, padding: 8, flex: 0 }}>
         {[50, 100, 200, 400, 600].map((n) => (
           <label key={n} style={{ cursor: 'pointer' }}>
             <input
@@ -35,7 +35,7 @@ export const Chart = ({ interval }: Props) => {
           </label>
         ))}
       </div>
-      <div ref={containerRef} style={{ flex: 1 }}>
+      <div ref={containerRef} style={{ flex: 1, maxHeight: "calc(100% - 40px)" }}>
         <Candles candles={visible} width={width} height={height * 0.8} />
         {/* <VolumeChart candles={candles} width={width} height={height * 0.3} /> */}
         <Rsi candles={visible} width={width} height={height * 0.2} />
