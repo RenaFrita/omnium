@@ -109,9 +109,7 @@ export const Candles = ({ candles, width, height }: Props) => {
       .join('circle')
       .attr('class', 'bos')
       .attr('cx', (d) => x(new Date(d.t)))
-      .attr('cy', (d) =>
-        d.bos ? y(Math.max(d.o, d.c, d.h)) : -100
-      )
+      .attr('cy', (d) => (d.bos ? y(Math.max(d.o, d.c, d.h)) : -100))
       .attr('r', (d) => (d.bos ? 4 : 0))
       .attr('fill', (d) =>
         d.bos === 'bullish'
@@ -172,6 +170,53 @@ export const Candles = ({ candles, width, height }: Props) => {
         .attr('stroke-width', 1.5)
         .attr('d', line)
     })
+
+    // -----------------------------
+    // 5️⃣ FVG (Fair Value Gap)
+    // -----------------------------
+    // Filtramos apenas os candles que possuem FVG para facilitar o join
+    const fvgData = candles.filter((d) => d.fvg)
+
+    priceG
+      .selectAll<SVGRectElement, ChartData>('.fvg-box')
+      .data(fvgData)
+      .join('rect')
+      .attr('class', 'fvg-box')
+      .attr('x', (d) => {
+        // O FVG começa no candle anterior ao atual (o candle 2 do padrão)
+        // ou no candle onde o gap foi identificado. Para visualização SMC,
+        // geralmente desenhamos do candle 1 ao 3.
+        const idx = candles.findIndex((c) => c.t === d.t)
+        return x(new Date(candles[idx - 2].t))
+      })
+      .attr('y', (d) => {
+        const idx = candles.findIndex((c) => c.t === d.t)
+        const c1 = candles[idx - 2]
+        const c3 = candles[idx]
+        // Bullish: gap entre High do C1 e Low do C3
+        // Bearish: gap entre Low do C1 e High do C3
+        return d.fvg === 'bullish' ? y(c3.l) : y(c1.l)
+      })
+      .attr('width', (d) => {
+        // Largura cobrindo os 3 candles do padrão
+        const idx = candles.findIndex((c) => c.t === d.t)
+        return (
+          x(new Date(candles[idx].t)) -
+          x(new Date(candles[idx - 2].t)) +
+          candleWidth
+        )
+      })
+      .attr('height', (d) => {
+        const idx = candles.findIndex((c) => c.t === d.t)
+        const c1 = candles[idx - 2]
+        const c3 = candles[idx]
+        return Math.abs(y(c1.h) - y(c3.l))
+      })
+      .attr('fill', (d) => (d.fvg === 'bullish' ? '#22c55e' : '#ef4444'))
+      .attr('fill-opacity', 0.15) // Opacidade baixa para não tapar os candles
+      .attr('stroke', (d) => (d.fvg === 'bullish' ? '#22c55e' : '#ef4444'))
+      .attr('stroke-width', 0.5)
+      .attr('stroke-dasharray', '2,2')
   }, [candles, width, height])
   return <svg ref={svgRef} />
 }
