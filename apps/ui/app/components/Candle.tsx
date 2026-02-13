@@ -1,4 +1,4 @@
-import { Candle } from "../hooks/useHyperliquid"
+import { Candle } from "../types"
 
 interface CandleProps {
   x: number

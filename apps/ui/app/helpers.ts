@@ -117,5 +117,3 @@ export function detectStructureChange(
 
   return { choch: null, bos: null }
 }
-
-export type Signal = 'buy' | 'sell' | 'none'
