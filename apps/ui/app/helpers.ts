@@ -1,93 +1,116 @@
-import { Candle } from "./hooks/useHyperliquid"
+import { Candle } from './hooks/useHyperliquid'
+import { ChartData } from './stores/chart'
 
-export function calculateEMA(data: number[], period: number): number[] {
+export function calculateEMA(
+  last: number | null,
+  price: number,
+  period: number
+): number {
   const k = 2 / (period + 1)
-  const ema: number[] = []
-  ema[0] = data[0]
 
-  for (let i = 1; i < data.length; i++) {
-    ema[i] = data[i] * k + ema[i - 1] * (1 - k)
+  if (last === null) {
+    return price
   }
 
-  return ema
+  return price * k + last * (1 - k)
 }
 
-export function calculateRSI(closes: number[], period = 14): number[] {
-  const rsi: number[] = []
-  let gains = 0
-  let losses = 0
+export function calculateVolumeSpike(
+  candles: Candle[],
+  volume: number,
+  period = 20,
+  multiplier = 1.5
+): boolean {
+  if (candles.length === 0) return false
 
-  for (let i = 1; i <= period; i++) {
-    const diff = closes[i] - closes[i - 1]
-    if (diff >= 0) gains += diff
-    else losses -= diff
-  }
+  const recent = candles.slice(-period)
+  const avgVolume = recent.reduce((sum, c) => sum + c.v, 0) / recent.length
 
-  let avgGain = gains / period
-  let avgLoss = losses / period
+  return volume > avgVolume * multiplier
+}
+export function detectSwing(prev: ChartData, last: ChartData) {
+  const prevSwing = prev.swing
 
-  rsi[period] = 100 - 100 / (1 + avgGain / avgLoss)
+  if (last.h > prev.h && last.l > prev.l) return 'HH'
+  if (last.h < prev.h && last.l < prev.l) return 'LL'
+  if (last.h > prev.h && last.l < prev.l) return 'HL'
+  if (last.h < prev.h && last.l > prev.l) return 'LH'
 
-  for (let i = period + 1; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1]
-    const gain = diff > 0 ? diff : 0
-    const loss = diff < 0 ? -diff : 0
-
-    avgGain = (avgGain * (period - 1) + gain) / period
-    avgLoss = (avgLoss * (period - 1) + loss) / period
-
-    rsi[i] = 100 - 100 / (1 + avgGain / avgLoss)
-  }
-
-  return rsi
+  return prevSwing
 }
 
-export function detectStructure(candles: Candle[]) {
-  const structure: string[] = []
+export function calculateRSI(prev: ChartData, last: ChartData, period = 14) {
+  const gain = Math.max(last.c - prev.c, 0)
+  const loss = Math.max(prev.c - last.c, 0)
 
-  for (let i = 2; i < candles.length; i++) {
-    const prevHigh = candles[i - 1].h
-    const prevLow = candles[i - 1].l
-    const currHigh = candles[i].h
-    const currLow = candles[i].l
+  const prevAvgGain = prev._avgGain ?? gain
+  const prevAvgLoss = prev._avgLoss ?? loss
 
-    if (currHigh > prevHigh && currLow > prevLow)
-      structure[i] = 'HH'
-    else if (currHigh < prevHigh && currLow > prevLow)
-      structure[i] = 'HL'
-    else if (currHigh < prevHigh && currLow < prevLow)
-      structure[i] = 'LL'
-    else if (currHigh > prevHigh && currLow < prevLow)
-      structure[i] = 'LH'
-    else structure[i] = 'RANGE'
-  }
+  const avgGain = (prevAvgGain * (period - 1) + gain) / period
+  const avgLoss = (prevAvgLoss * (period - 1) + loss) / period
 
-  return structure
+  const rsi = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss)
+
+  return { rsi, _avgGain: avgGain, _avgLoss: avgLoss }
 }
 
-export function detectBOS(structure: string[]) {
-  const bos: boolean[] = []
-
-  for (let i = 1; i < structure.length; i++) {
-    if (structure[i - 1] === 'HL' && structure[i] === 'HH')
-      bos[i] = true
-    else if (structure[i - 1] === 'LH' && structure[i] === 'LL')
-      bos[i] = true
-    else bos[i] = false
+export function detectBias(
+  prev: ChartData,
+  last: ChartData
+): 'bullish' | 'bearish' | null {
+  if (!last.swing) return prev.bias ?? null
+  if (prev.bias) {
+    if (
+      (prev.bias === 'bullish' && last.swing === 'HL') ||
+      last.swing === 'HH'
+    ) {
+      return 'bullish'
+    } else if (
+      (prev.bias === 'bearish' && last.swing === 'LH') ||
+      last.swing === 'LL'
+    ) {
+      return 'bearish'
+    } else {
+      return prev.bias
+    }
+  } else {
+    if (last.swing === 'HH' || last.swing === 'HL') return 'bullish'
+    if (last.swing === 'LL' || last.swing === 'LH') return 'bearish'
+    return null
   }
-
-  return bos
 }
 
-export function detectVolumeSpike(volumes: number[], period = 20) {
-  const spikes: boolean[] = []
+export function detectCHoCH(prev: ChartData, last: ChartData) {
+  if (prev.bias === 'bullish' && last.c < prev.l) return 'bearish'
+  if (prev.bias === 'bearish' && last.c > prev.h) return 'bullish'
+  return (last.choch = null)
+}
 
-  for (let i = period; i < volumes.length; i++) {
-    const avg =
-      volumes.slice(i - period, i).reduce((a, b) => a + b, 0) / period
+export function detectBOS(prev: ChartData, last: ChartData) {
+  if (prev.bias === 'bullish' && last.c < prev.l) return 'bearish'
+  if (prev.bias === 'bearish' && last.c > prev.h) return 'bullish'
+  return null
+}
 
-    spikes[i] = volumes[i] > avg * 2
+export type Signal = 'buy' | 'sell' | 'none'
+
+export function getSignal(candle: {
+  swing?: 'HH' | 'HL' | 'LH' | 'LL'
+  bias?: 'bullish' | 'bearish' | null
+  bos?: 'bullish' | 'bearish' | null
+  choch?: 'bullish' | 'bearish' | null
+}): Signal {
+  if (
+    candle.bias === 'bullish' &&
+    (candle.bos === 'bullish' || candle.choch === 'bullish')
+  ) {
+    return 'buy'
   }
-
-  return spikes
+  if (
+    candle.bias === 'bearish' &&
+    (candle.bos === 'bearish' || candle.choch === 'bearish')
+  ) {
+    return 'sell'
+  }
+  return 'none'
 }

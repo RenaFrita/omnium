@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 export const useChartDimensions = (
-  ref: React.RefObject<HTMLDivElement | null>
+  ref: React.RefObject<HTMLElement | null>
 ) => {
   const [dimensions, setDimensions] = useState({
     width: 0,
