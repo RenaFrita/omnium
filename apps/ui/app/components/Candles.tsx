@@ -100,10 +100,6 @@ export const Candles = ({ candles, width, height }: Props) => {
       .attr('height', (d) => Math.max(1, Math.abs(y(d.o) - y(d.c))))
       .attr('fill', (d) => (d.c >= d.o ? '#16a34a' : '#dc2626'))
 
-    const BOS_OFFSET = 50
-    const CHOCH_OFFSET = 30
-    const SIGNAL_OFFSET = 10
-
     // -----------------------------
     // 3️⃣ BOS
     // -----------------------------
@@ -114,7 +110,7 @@ export const Candles = ({ candles, width, height }: Props) => {
       .attr('class', 'bos')
       .attr('cx', (d) => x(new Date(d.t)))
       .attr('cy', (d) =>
-        d.bos ? y(Math.max(d.o, d.c, d.h)) - BOS_OFFSET : -100
+        d.bos ? y(Math.max(d.o, d.c, d.h)) : -100
       )
       .attr('r', (d) => (d.bos ? 4 : 0))
       .attr('fill', (d) =>
@@ -136,7 +132,7 @@ export const Candles = ({ candles, width, height }: Props) => {
       .attr('points', (d) => {
         if (!d.choch) return ''
         const cx = x(new Date(d.t))
-        const cy = y(Math.max(d.o, d.c, d.h)) - CHOCH_OFFSET
+        const cy = y(Math.max(d.o, d.c, d.h))
         const size = 6
         return d.choch === 'bullish'
           ? `${cx},${cy - size} ${cx - size},${cy + size} ${cx + size},${cy + size}`
@@ -147,47 +143,6 @@ export const Candles = ({ candles, width, height }: Props) => {
           ? 'green'
           : d.choch === 'bearish'
             ? 'red'
-            : 'transparent'
-      )
-
-    // -----------------------------
-    // 5️⃣ Signal
-    // -----------------------------
-
-    priceG
-      .selectAll<SVGTextElement, ChartData>('.signal-text')
-      .data(candles)
-      .join('text')
-      .attr('class', 'signal-text')
-      .attr('x', (d) => x(new Date(d.t)))
-      .attr('y', (d) =>
-        d.signal && d.signal !== 'none'
-          ? y(Math.max(d.o, d.c, d.h)) - SIGNAL_OFFSET
-          : -100
-      )
-      .attr('text-anchor', 'middle')
-      .attr('alignment-baseline', 'middle')
-      .attr('font-size', 14)
-    priceG
-      .selectAll<SVGTextElement, ChartData>('.signal')
-      .data(candles)
-      .join('text')
-      .attr('class', 'signal')
-      .attr('x', (d) => x(new Date(d.t)))
-      .attr('y', (d) =>
-        d.signal && d.signal !== 'none' ? y(Math.max(d.o, d.c, d.h)) - 22 : -100
-      )
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 14)
-      .attr('pointer-events', 'none')
-      .text((d) =>
-        d.signal === 'buy' ? '⚡' : d.signal === 'sell' ? '💀' : ''
-      )
-      .attr('fill', (d) =>
-        d.signal === 'buy'
-          ? '#facc15' // amarelo energia
-          : d.signal === 'sell'
-            ? '#7f1d1d' // vermelho escuro
             : 'transparent'
       )
 

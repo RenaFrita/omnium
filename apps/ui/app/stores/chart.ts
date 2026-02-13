@@ -5,11 +5,9 @@ import {
   calculateRSI,
   calculateVolumeSpike,
   detectBias,
-  detectBOS,
-  detectCHoCH,
-  detectSwing,
-  getSignal,
-  Signal,
+  detectStructureChange,
+  detectSwingType,
+  getLastPivotPoints,
 } from '../helpers'
 
 const MAX_CANDLES = 600
@@ -20,11 +18,11 @@ export interface ChartData extends Candle {
   ema100?: number
   ema200?: number
   volumeSpike: boolean
-  swing?: 'HH' | 'HL' | 'LH' | 'LL'
   bias?: 'bullish' | 'bearish' | null
   bos?: 'bullish' | 'bearish' | null
   choch?: 'bullish' | 'bearish' | null
-  signal: Signal
+  swing?: 'HH' | 'LL' | 'HL' | 'LH' | null
+  swingType?: 'High' | 'Low' | null
   rsi?: number
   _avgGain?: number
   _avgLoss?: number
@@ -52,41 +50,79 @@ export const useChartStore = create<ChartStore>((set) => ({
     set((state) => {
       const old = state[interval]
       let candles: ChartData[]
-      let last = old[old.length - 1]
 
-      if (last && last.t === candle.t) {
+      // 1. Gerenciamento de candles (Update ou Push)
+      if (old.length > 0 && old[old.length - 1].t === candle.t) {
         candles = [...old]
-        candles[candles.length - 1] = {
-          ...candle,
-          volumeSpike: false,
-          signal: 'none',
-        }
+        candles[candles.length - 1] = { ...old[old.length - 1], ...candle }
       } else {
-        candles = [...old, { ...candle, volumeSpike: false, signal: 'none' }]
+        candles = [...old, { ...candle, volumeSpike: false }]
       }
 
-      last = candles[candles.length - 1]
-      const prev = candles[candles.length - 2] ?? last
+      const lastIdx = candles.length - 1
+      const last = candles[lastIdx]
+      const prev = candles[lastIdx - 1] ?? last
 
-      candles[candles.length - 1] = {
+      // 2. Indicadores Básicos (EMA, RSI, Volume)
+      const ema20 = calculateEMA(prev.ema20 ?? prev.c, last.c, 20)
+      const ema50 = calculateEMA(prev.ema50 ?? prev.c, last.c, 50)
+      const ema100 = calculateEMA(prev.ema20 ?? prev.c, last.c, 100)
+      const ema200 = calculateEMA(prev.ema20 ?? prev.c, last.c, 200)
+      
+      const rsiData = calculateRSI(prev, last)
+      const volumeSpike = calculateVolumeSpike(candles, last.v, 20, 1.5)
+
+      // 3. Lógica de Swing (Fractal confirmado no index-2)
+      const fractalIdx = lastIdx - 2
+      if (fractalIdx >= 2) {
+        const swingType = detectSwingType(candles, fractalIdx)
+        const targetCandle = candles[fractalIdx]
+        const prevBias = candles[fractalIdx - 1]?.bias ?? null
+
+        if (swingType) {
+          const { lastHigh, lastLow } = getLastPivotPoints(candles, fractalIdx)
+          targetCandle.swingType = swingType
+          
+          if (swingType === 'High') {
+            targetCandle.swing = targetCandle.h > lastHigh ? 'HH' : 'LH'
+          } else {
+            targetCandle.swing = targetCandle.l < lastLow ? 'LL' : 'HL'
+          }
+          // Atualiza o bias com base no novo swing detectado
+          targetCandle.bias = detectBias(prevBias, targetCandle.swing)
+        } else {
+          // Sem swing novo, mantém o bias anterior
+          targetCandle.bias = detectBias(prevBias, null)
+        }
+      }
+
+      // 4. Propagação e Estrutura (No candle Atual)
+      // O bias do candle atual é herdado do candle anterior (que já foi processado pela lógica de fractal)
+      const currentBias = candles[lastIdx - 1]?.bias ?? null
+      const structure = detectStructureChange(candles, currentBias);
+
+      const newLastCandle: ChartData = {
         ...last,
-        ema20: calculateEMA(prev.ema20 ?? prev.c, last.c, 20),
-        ema50: calculateEMA(prev.ema50 ?? prev.c, last.c, 50),
-        ema100: calculateEMA(prev.ema100 ?? prev.c, last.c, 100),
-        ema200: calculateEMA(prev.ema200 ?? prev.c, last.c, 200),
-        volumeSpike: calculateVolumeSpike(candles, last.v, 20, 1.5),
-        swing: detectSwing(prev, last),
-        bias: detectBias(prev, last),
-        bos: detectBOS(prev, last),
-        choch: detectCHoCH(prev, last),
-        signal: getSignal(last),
-        ...calculateRSI(prev, last),
-      }
+        ema20,
+        ema50,
+        ema100,
+        ema200,
+        volumeSpike,
+        bias: currentBias,
+        rsi: rsiData.rsi,
+        _avgGain: rsiData._avgGain,
+        _avgLoss: rsiData._avgLoss,
+        bos: structure.bos,
+        choch: structure.choch,
+      };
+
+      candles[lastIdx] = newLastCandle;
 
       return {
         ...state,
-        [interval]: candles.slice(candles.length - MAX_CANDLES),
+        [interval]: candles.slice(-MAX_CANDLES),
       }
     })
   },
 }))
+
