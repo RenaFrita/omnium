@@ -1,4 +1,3 @@
-import { Chart } from '../components/Chart'
 import { Container } from '../components/Container'
 
 interface PageProps {
