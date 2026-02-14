@@ -58,7 +58,7 @@ export class RingBuffer {
       rsi,
       volumeSMA20: volSMA,
       isVolumeSpike,
-      bias: lastCandle?.bias ?? null,
+      bias: lastCandle?.bias ?? (c > ema200 ? 'bullish' : 'bearish'),
       swing: null,
       swingType: null,
       bos: null,
@@ -142,8 +142,11 @@ export class RingBuffer {
     const prevCandle = this.get(index - 1)
     if (!candle || !prevCandle) return
 
-    // Mantém a tendência anterior
-    candle.bias = prevCandle.bias
+    // 1. Garantir que o bias atual nunca seja null para a lógica funcionar
+    if (candle.bias === null) {
+      candle.bias =
+        candle.c > (candle.ema200 ?? candle.c) ? 'bullish' : 'bearish'
+    }
 
     const { highs, lows } = this.getLastTwoPivots(index)
     if (!highs.length || !lows.length) return
@@ -151,24 +154,22 @@ export class RingBuffer {
     const lastHigh = highs[0]
     const lastLow = lows[0]
 
-    // Previne disparar sinais repetidos se o preço já estiver acima/abaixo do pivot
-    const wasAlreadyBrokenBull = prevCandle.c > lastHigh
-    const wasAlreadyBrokenBear = prevCandle.c < lastLow
+    // 2. Só permitimos um novo sinal se o fechamento anterior NÃO tivesse rompido o mesmo pivot
+    // Isto evita o spam de ícones que vês na tua imagem
+    const isBreakoutBull = candle.c > lastHigh && prevCandle.c <= lastHigh
+    const isBreakoutBear = candle.c < lastLow && prevCandle.c >= lastLow
 
-    // Bullish Breakout
-    if (candle.c > lastHigh && !wasAlreadyBrokenBull) {
+    if (isBreakoutBull) {
       if (candle.bias === 'bearish') {
         candle.choch = 'bullish'
-        candle.bias = 'bullish'
+        candle.bias = 'bullish' // Inverte a tendência
       } else {
         candle.bos = 'bullish'
       }
-    }
-    // Bearish Breakout
-    else if (candle.c < lastLow && !wasAlreadyBrokenBear) {
+    } else if (isBreakoutBear) {
       if (candle.bias === 'bullish') {
         candle.choch = 'bearish'
-        candle.bias = 'bearish'
+        candle.bias = 'bearish' // Inverte a tendência
       } else {
         candle.bos = 'bearish'
       }
