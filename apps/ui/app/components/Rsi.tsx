@@ -12,7 +12,7 @@ export const Rsi = ({ width, height, candles }: Props) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   useEffect(() => {
-    const margin = { top: 20, right: 50, bottom: 30, left: 60 }
+    const margin = { top: 10, right: 50, bottom: 10, left: 60 }
     const rsiHeight = height - margin.bottom
 
     const innerWidth = width - margin.left - margin.right

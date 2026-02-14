@@ -15,7 +15,7 @@ export const VolumeChart = ({ width, height, candles }: Props) => {
     if (!candles.length) return
 
     // ================= MARGENS =================
-    const margin = { top: 10, right: 50, bottom: 30, left: 60 }
+    const margin = { top: 5, right: 50, bottom: 5, left: 60 }
     const innerWidth = width - margin.left - margin.right
     const innerHeight = height - margin.top - margin.bottom
 
