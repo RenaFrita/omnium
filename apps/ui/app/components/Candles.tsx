@@ -2,10 +2,6 @@ import { useMemo } from 'react'
 import { CandleUI } from '../types'
 import * as d3 from 'd3'
 
-// Adiciona ao teu type CandleUI se ainda não tiveres:
-// bos?: 'bull' | 'bear'
-// choch?: 'bull' | 'bear'
-
 interface Props {
   candles: CandleUI[]
   width: number
