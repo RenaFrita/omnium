@@ -21,7 +21,10 @@ const emaConfigs = [
 ]
 
 export const Candles = ({ candles, width, height, hoverX }: Props) => {
-  const margin = useMemo(() => ({ top: 20, right: 50, bottom: 20, left: 60 }), [])
+  const margin = useMemo(
+    () => ({ top: 20, right: 50, bottom: 20, left: 60 }),
+    []
+  )
   const innerWidth = Math.max(0, width - margin.left - margin.right)
   const innerHeight = Math.max(0, height - margin.top - margin.bottom)
 
@@ -33,20 +36,26 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
     const timeExtent = d3.extent(candles, (d) => d.t) as [number, number]
     const step = candles.length > 1 ? candles[1].t - candles[0].t : 60_000
 
-    const xScale = d3.scaleTime()
-      .domain([new Date(timeExtent[0] - step / 2), new Date(timeExtent[1] + step / 2)])
+    const xScale = d3
+      .scaleTime()
+      .domain([
+        new Date(timeExtent[0] - step / 2),
+        new Date(timeExtent[1] + step / 2),
+      ])
       .range([0, innerWidth])
 
     const minP = d3.min(candles, (d) => d.l)!
     const maxP = d3.max(candles, (d) => d.h)!
-    const yScale = d3.scaleLinear()
+    const yScale = d3
+      .scaleLinear()
       .domain([minP * 0.998, maxP * 1.002])
       .range([innerHeight, 0])
 
     const cWidth = Math.max(2, (innerWidth / candles.length) * 0.7)
 
     const paths = emaConfigs.map((config) => {
-      const lineGen = d3.line<CandleUI>()
+      const lineGen = d3
+        .line<CandleUI>()
         .defined((d) => d[config.key] !== undefined && d[config.key] !== null)
         .x((d) => xScale(new Date(d.t)))
         .y((d) => yScale(d[config.key]!))
@@ -66,7 +75,9 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
           {/* Eixo Y */}
           <g fontSize="10" fill="#444" textAnchor="end">
             {y.ticks(6).map((tick) => (
-              <text key={tick} x="-5" y={y(tick) + 4}>{d3.format(',.2f')(tick)}</text>
+              <text key={tick} x="-5" y={y(tick) + 4}>
+                {d3.format(',.2f')(tick)}
+              </text>
             ))}
           </g>
 
@@ -78,7 +89,14 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
             return (
               <g key={d.t}>
                 {/* Candle Wick & Body */}
-                <line x1={xPos} x2={xPos} y1={y(d.h)} y2={y(d.l)} stroke={color} strokeWidth={1} />
+                <line
+                  x1={xPos}
+                  x2={xPos}
+                  y1={y(d.h)}
+                  y2={y(d.l)}
+                  stroke={color}
+                  strokeWidth={1}
+                />
                 <rect
                   x={xPos - candleWidth / 2}
                   y={y(Math.max(d.o, d.c))}
@@ -99,7 +117,9 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
                     style={{ fontWeight: 'bold' }}
                   >
                     ⚡
-                    <tspan x={xPos} dy="10" fontSize="8">BOS</tspan>
+                    <tspan x={xPos} dy="10" fontSize="8">
+                      BOS
+                    </tspan>
                   </text>
                 )}
 
@@ -113,7 +133,9 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
                     fill={d.choch === 'bullish' ? '#22c55e' : '#ef4444'}
                   >
                     💀
-                    <tspan x={xPos} dy="10" fontSize="8">CHoCH</tspan>
+                    <tspan x={xPos} dy="10" fontSize="8">
+                      CHoCH
+                    </tspan>
                   </text>
                 )}
               </g>
@@ -122,12 +144,27 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
 
           {/* EMAs */}
           {emaPaths.map((ema) => (
-            <path key={ema.key} d={ema.path || ''} fill="none" stroke={ema.color} strokeWidth={1.5} opacity={0.6} />
+            <path
+              key={ema.key}
+              d={ema.path || ''}
+              fill="none"
+              stroke={ema.color}
+              strokeWidth={1.5}
+              opacity={0.6}
+            />
           ))}
 
-          {/* Crosshair */}
           {hoverX !== undefined && (
-            <line x1={hoverX - margin.left} x2={hoverX - margin.left} y1={0} y2={innerHeight} stroke="#fff" strokeWidth={1} strokeDasharray="4,4" opacity={0.5} />
+            <line
+              x1={hoverX}
+              x2={hoverX}
+              y1={0}
+              y2={innerHeight}
+              stroke="#ffffff"
+              strokeWidth={1}
+              strokeDasharray="4,4"
+              style={{ opacity: 0.5, pointerEvents: 'none' }}
+            />
           )}
         </g>
       </svg>
