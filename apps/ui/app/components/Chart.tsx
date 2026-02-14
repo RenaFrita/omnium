@@ -134,7 +134,14 @@ export const Chart = ({ interval }: Props) => {
           }}
         >
           O: {hoverData.candle.o} H: {hoverData.candle.h} L:{' '}
-          {hoverData.candle.l} C: {hoverData.candle.c}
+          {hoverData.candle.l} C: {hoverData.candle.c}{' '}
+          volumeSMA20: {hoverData.candle.volumeSMA20}{' '}
+          isVolumeSpike: {hoverData.candle.isVolumeSpike}{' '}
+          swingType:{hoverData.candle.swingType}{' '}
+          swing: {hoverData.candle.swing}{' '}
+          bias: {hoverData.candle.bias}{' '}
+          bos: {hoverData.candle.bos}{' '}
+          choch:{hoverData.candle.choch}
         </div>
       )}
     </div>
