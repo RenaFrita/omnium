@@ -5,6 +5,7 @@ import { useChartStore } from '../stores/chart'
 import { Interval } from '../types'
 import { Candles } from './Candles'
 import { Rsi } from './Rsi'
+import { VolumeChart } from './Volume'
 
 interface Props {
   interval: Interval
@@ -36,9 +37,9 @@ export const Chart = ({ interval }: Props) => {
         ))}
       </div>
       <div ref={containerRef} style={{ flex: 1, maxHeight: "calc(100% - 40px)" }}>
-        <Candles candles={visible} width={width} height={height * 0.8} />
-        {/* <VolumeChart candles={candles} width={width} height={height * 0.3} /> */}
-        <Rsi candles={visible} width={width} height={height * 0.2} />
+        <Candles candles={visible} width={width} height={height * 0.7} />
+        <VolumeChart candles={candles} width={width} height={height * 0.15} />
+        <Rsi candles={visible} width={width} height={height * 0.15} />
       </div>
     </div>
   )
