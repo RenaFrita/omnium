@@ -1,6 +1,6 @@
 'use client'
 
-import { useSocket } from '../hooks/useSocket'
+import { useWorker } from '../hooks/useWorker'
 import { Chart } from './Chart'
 
 interface Props {
@@ -8,8 +8,7 @@ interface Props {
 }
 
 export const Container = ({ coin }: Props) => {
-  useSocket(coin)
-
+  useWorker(coin)
   return (
     <ul style={{ display: 'flex', flexWrap: 'wrap', height: '100%' }}>
       <li style={{ flex: '1 1 50%', height: '50%' }}>

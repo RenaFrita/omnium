@@ -1,38 +1,31 @@
-import { useEffect, useRef } from 'react'
-import { ChartData } from '../stores/chart'
+import { useMemo } from 'react'
+import { CandleUI } from '../types'
 import * as d3 from 'd3'
 
 interface Props {
   width: number
   height: number
-  candles: ChartData[]
+  candles: CandleUI[]
+  hoverX?: number
 }
 
-export const Rsi = ({ width, height, candles }: Props) => {
-  const svgRef = useRef<SVGSVGElement | null>(null)
+export const Rsi = ({ width, height, candles, hoverX }: Props) => {
+  const margin = useMemo(
+    () => ({ top: 10, right: 50, bottom: 20, left: 60 }),
+    []
+  )
+  const innerWidth = Math.max(0, width - margin.left - margin.right)
+  const innerHeight = Math.max(0, height - margin.top - margin.bottom)
 
-  useEffect(() => {
-    const margin = { top: 10, right: 50, bottom: 10, left: 60 }
-    const rsiHeight = height - margin.bottom
-
-    const innerWidth = width - margin.left - margin.right
-    const innerRsiHeight = rsiHeight - 20
-
-    const svg = d3.select(svgRef.current)
-    svg.attr('viewBox', `0 0 ${width} ${height}`)
-
-    // ================= GROUPS =================
-    let rsiG = svg.select<SVGGElement>('.rsi-group')
-    if (rsiG.empty()) {
-      rsiG = svg.append('g').attr('class', 'rsi-group')
+  const { pathData, x, y } = useMemo(() => {
+    if (!candles.length || innerWidth <= 0 || innerHeight <= 0) {
+      return { pathData: null, x: null, y: null }
     }
-    rsiG.attr('transform', `translate(${margin.left},${margin.top})`)
 
-    // ================= SCALES =================
     const timeExtent = d3.extent(candles, (d) => d.t) as [number, number]
     const step = candles.length > 1 ? candles[1].t - candles[0].t : 60_000
 
-    const x = d3
+    const xScale = d3
       .scaleTime()
       .domain([
         new Date(timeExtent[0] - step / 2),
@@ -40,39 +33,83 @@ export const Rsi = ({ width, height, candles }: Props) => {
       ])
       .range([0, innerWidth])
 
-    const rsiScale = d3
-      .scaleLinear()
-      .domain([0, 100])
-      .range([innerRsiHeight, 0])
+    const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0])
 
-    // ================= AXES =================
-    rsiG
-      .selectAll<SVGGElement, null>('.rsi-axis')
-      .data([null])
-      .join('g')
-      .attr('class', 'rsi-axis')
-      .call(d3.axisLeft(rsiScale).tickValues([0, 50, 100]))
+    const lineGenerator = d3
+      .line<CandleUI>()
+      .defined((d) => d.rsi !== undefined && !isNaN(d.rsi))
+      .x((d) => xScale(new Date(d.t)))
+      .y((d) => yScale(d.rsi as number))
+      .curve(d3.curveMonotoneX)
 
-    // ================= RSI =================
-    const rsiData = candles
-      .map((c) => ({ t: c.t, value: c.rsi }))
-      .filter((d): d is { t: number; value: number } => d.value !== undefined)
+    return {
+      pathData: lineGenerator(candles),
+      x: xScale,
+      y: yScale,
+    }
+  }, [candles, innerWidth, innerHeight])
 
-    const rsiLine = d3
-      .line<{ t: number; value: number }>()
-      .x((d) => x(new Date(d.t)))
-      .y((d) => rsiScale(d.value as number))
+  if (!x || !y || width <= 0 || height <= 0) return null
 
-    rsiG
-      .selectAll<SVGPathElement, (typeof rsiData)[]>('.rsi-line')
-      .data([rsiData])
-      .join('path')
-      .attr('class', 'rsi-line')
-      .attr('fill', 'none')
-      .attr('stroke', '#a855f7')
-      .attr('stroke-width', 1.5)
-      .attr('d', rsiLine)
-  }, [candles, width, height])
-
-  return <svg ref={svgRef} />
+  return (
+    <div style={{ width: '100%', height: '20%', contain: 'strict' }}>
+      <svg width={width} height={height} style={{ display: 'block' }}>
+        <g transform={`translate(${margin.left},${margin.top})`}>
+          <line
+            x1={0}
+            x2={innerWidth}
+            y1={y(70)}
+            y2={y(70)}
+            stroke="#333"
+            strokeDasharray="4,4"
+          />
+          <line
+            x1={0}
+            x2={innerWidth}
+            y1={y(30)}
+            y2={y(30)}
+            stroke="#333"
+            strokeDasharray="4,4"
+          />
+          <line
+            x1={0}
+            x2={innerWidth}
+            y1={y(50)}
+            y2={y(50)}
+            stroke="#222"
+            strokeOpacity="0.5"
+          />
+          <g fontSize="9" fill="#666" textAnchor="end">
+            {[30, 50, 70].map((tick) => (
+              <text key={tick} x="-5" y={y(tick) + 3}>
+                {tick}
+              </text>
+            ))}
+          </g>
+          {pathData && (
+            <path
+              d={pathData}
+              fill="none"
+              stroke="#a855f7"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          )}
+          {hoverX !== undefined && (
+            <line
+              x1={hoverX} // hoverX já é o x(candle.t) vindo do pai
+              x2={hoverX}
+              y1={0}
+              y2={innerHeight}
+              stroke="#ffffff"
+              strokeWidth={1}
+              strokeDasharray="4,4"
+              style={{ opacity: 0.5, pointerEvents: 'none' }}
+            />
+          )}
+        </g>
+      </svg>
+    </div>
+  )
 }

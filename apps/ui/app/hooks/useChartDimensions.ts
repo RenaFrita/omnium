@@ -1,14 +1,7 @@
-'use client'
+import { useState, useEffect, RefObject } from 'react'
 
-import { useEffect, useState } from 'react'
-
-export const useChartDimensions = (
-  ref: React.RefObject<HTMLElement | null>
-) => {
-  const [dimensions, setDimensions] = useState({
-    width: 0,
-    height: 0,
-  })
+export const useChartDimensions = (ref: RefObject<HTMLElement | null>) => {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
   useEffect(() => {
     if (!ref.current) return
@@ -19,10 +12,8 @@ export const useChartDimensions = (
     })
 
     observer.observe(ref.current)
-
     return () => observer.disconnect()
   }, [ref])
 
   return dimensions
 }
-

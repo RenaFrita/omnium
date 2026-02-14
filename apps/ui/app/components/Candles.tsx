@@ -1,222 +1,136 @@
-import { useEffect, useRef } from 'react'
-import { ChartData } from '../stores/chart'
+import { useMemo } from 'react'
+import { CandleUI } from '../types'
 import * as d3 from 'd3'
 
+// Adiciona ao teu type CandleUI se ainda não tiveres:
+// bos?: 'bull' | 'bear'
+// choch?: 'bull' | 'bear'
+
 interface Props {
-  candles: ChartData[]
+  candles: CandleUI[]
   width: number
   height: number
+  hoverX?: number
 }
 
-export const Candles = ({ candles, width, height }: Props) => {
-  const svgRef = useRef<SVGSVGElement | null>(null)
+const emaConfigs = [
+  { key: 'ema20' as const, color: '#3b82f6' },
+  { key: 'ema50' as const, color: '#f59e0b' },
+  { key: 'ema100' as const, color: '#ec4899' },
+  { key: 'ema200' as const, color: '#94a3b8' },
+]
 
-  useEffect(() => {
-    const margin = { top: 20, right: 50, bottom: 30, left: 60 }
-    const priceHeight = height - margin.bottom
+export const Candles = ({ candles, width, height, hoverX }: Props) => {
+  const margin = useMemo(() => ({ top: 20, right: 50, bottom: 20, left: 60 }), [])
+  const innerWidth = Math.max(0, width - margin.left - margin.right)
+  const innerHeight = Math.max(0, height - margin.top - margin.bottom)
 
-    const innerWidth = width - margin.left - margin.right
-    const innerPriceHeight = priceHeight - margin.top
-
-    const svg = d3.select(svgRef.current)
-    svg.attr('viewBox', `0 0 ${width} ${height}`)
-
-    // ================= GROUPS =================
-
-    let priceG = svg.select<SVGGElement>('.price-group')
-    if (priceG.empty()) {
-      priceG = svg.append('g').attr('class', 'price-group')
+  const { x, y, candleWidth, emaPaths } = useMemo(() => {
+    if (!candles.length || innerWidth <= 0 || innerHeight <= 0) {
+      return { x: null, y: null, candleWidth: 0, emaPaths: [] }
     }
-    priceG.attr('transform', `translate(${margin.left},${margin.top})`)
-
-    // ================= SCALES =================
 
     const timeExtent = d3.extent(candles, (d) => d.t) as [number, number]
     const step = candles.length > 1 ? candles[1].t - candles[0].t : 60_000
 
-    const x = d3
-      .scaleTime()
-      .domain([
-        new Date(timeExtent[0] - step / 2),
-        new Date(timeExtent[1] + step / 2),
-      ])
+    const xScale = d3.scaleTime()
+      .domain([new Date(timeExtent[0] - step / 2), new Date(timeExtent[1] + step / 2)])
       .range([0, innerWidth])
 
-    const y = d3
-      .scaleLinear()
-      .domain([
-        d3.min(candles, (d) => d.l)! * 0.995,
-        d3.max(candles, (d) => d.h)! * 1.005,
-      ])
-      .nice()
-      .range([innerPriceHeight, 0])
+    const minP = d3.min(candles, (d) => d.l)!
+    const maxP = d3.max(candles, (d) => d.h)!
+    const yScale = d3.scaleLinear()
+      .domain([minP * 0.998, maxP * 1.002])
+      .range([innerHeight, 0])
 
-    // ================= AXES =================
+    const cWidth = Math.max(2, (innerWidth / candles.length) * 0.7)
 
-    priceG
-      .selectAll<SVGGElement, null>('.x-axis')
-      .data([null])
-      .join('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${innerPriceHeight})`)
-      .call(d3.axisBottom(x))
-
-    priceG
-      .selectAll<SVGGElement, null>('.y-axis')
-      .data([null])
-      .join('g')
-      .attr('class', 'y-axis')
-      .call(d3.axisLeft(y))
-
-    // ================= CANDLES =================
-
-    const xPositions = candles.map((d) => x(new Date(d.t)))
-    const minDistance = d3.min(
-      xPositions.slice(1).map((pos, i) => pos - xPositions[i])
-    )
-    const candleWidth = Math.max(2, (minDistance ?? 10) * 0.6)
-
-    // Wicks
-    priceG
-      .selectAll<SVGLineElement, typeof candles>('.wick')
-      .data(candles)
-      .join('line')
-      .attr('class', 'wick')
-      .attr('x1', (d) => x(new Date(d.t)))
-      .attr('x2', (d) => x(new Date(d.t)))
-      .attr('y1', (d) => y(d.h))
-      .attr('y2', (d) => y(d.l))
-      .attr('stroke', (d) => (d.c >= d.o ? '#16a34a' : '#dc2626'))
-
-    // Bodies
-    priceG
-      .selectAll<SVGRectElement, typeof candles>('.body')
-      .data(candles)
-      .join('rect')
-      .attr('class', 'body')
-      .attr('x', (d) => x(new Date(d.t)) - candleWidth / 2)
-      .attr('y', (d) => y(Math.max(d.o, d.c)))
-      .attr('width', candleWidth)
-      .attr('height', (d) => Math.max(1, Math.abs(y(d.o) - y(d.c))))
-      .attr('fill', (d) => (d.c >= d.o ? '#16a34a' : '#dc2626'))
-
-    // -----------------------------
-    // 3️⃣ BOS
-    // -----------------------------
-    priceG
-      .selectAll<SVGCircleElement, ChartData>('.bos')
-      .data(candles)
-      .join('circle')
-      .attr('class', 'bos')
-      .attr('cx', (d) => x(new Date(d.t)))
-      .attr('cy', (d) => (d.bos ? y(Math.max(d.o, d.c, d.h)) : -100))
-      .attr('r', (d) => (d.bos ? 4 : 0))
-      .attr('fill', (d) =>
-        d.bos === 'bullish'
-          ? 'green'
-          : d.bos === 'bearish'
-            ? 'red'
-            : 'transparent'
-      )
-
-    // -----------------------------
-    // 4️⃣ CHoCH
-    // -----------------------------
-    priceG
-      .selectAll<SVGPolygonElement, ChartData>('.choch')
-      .data(candles)
-      .join('polygon')
-      .attr('class', 'choch')
-      .attr('points', (d) => {
-        if (!d.choch) return ''
-        const cx = x(new Date(d.t))
-        const cy = y(Math.max(d.o, d.c, d.h))
-        const size = 6
-        return d.choch === 'bullish'
-          ? `${cx},${cy - size} ${cx - size},${cy + size} ${cx + size},${cy + size}`
-          : `${cx},${cy + size} ${cx - size},${cy - size} ${cx + size},${cy - size}`
-      })
-      .attr('fill', (d) =>
-        d.choch === 'bullish'
-          ? 'green'
-          : d.choch === 'bearish'
-            ? 'red'
-            : 'transparent'
-      )
-
-    // // ================= EMA =================
-    type EMAKey = keyof Pick<ChartData, 'ema20' | 'ema50' | 'ema100' | 'ema200'>
-    const emaKeys: { key: EMAKey; color: string }[] = [
-      { key: 'ema20', color: '#3b82f6' },
-      { key: 'ema50', color: '#f59e0b' },
-      { key: 'ema100', color: '#eca1a6' },
-      { key: 'ema200', color: '#d6cbd3' },
-    ]
-
-    emaKeys.forEach(({ key, color }) => {
-      const line = d3
-        .line<ChartData>()
-        .defined((d) => d[key] !== undefined && d[key] !== null)
-        .x((d) => x(new Date(d.t)))
-        .y((d) => y(d[key]!))
-
-      priceG
-        .selectAll<SVGPathElement, ChartData[]>(`.${key}`)
-        .data([candles])
-        .join('path')
-        .attr('class', key)
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', 1.5)
-        .attr('d', line)
+    const paths = emaConfigs.map((config) => {
+      const lineGen = d3.line<CandleUI>()
+        .defined((d) => d[config.key] !== undefined && d[config.key] !== null)
+        .x((d) => xScale(new Date(d.t)))
+        .y((d) => yScale(d[config.key]!))
+        .curve(d3.curveMonotoneX)
+      return { path: lineGen(candles), color: config.color, key: config.key }
     })
 
-    // -----------------------------
-    // 5️⃣ FVG (Fair Value Gap)
-    // -----------------------------
-    // Filtramos apenas os candles que possuem FVG para facilitar o join
-    const fvgData = candles.filter((d) => d.fvg)
+    return { x: xScale, y: yScale, candleWidth: cWidth, emaPaths: paths }
+  }, [candles, innerWidth, innerHeight])
 
-    priceG
-      .selectAll<SVGRectElement, ChartData>('.fvg-box')
-      .data(fvgData)
-      .join('rect')
-      .attr('class', 'fvg-box')
-      .attr('x', (d) => {
-        // O FVG começa no candle anterior ao atual (o candle 2 do padrão)
-        // ou no candle onde o gap foi identificado. Para visualização SMC,
-        // geralmente desenhamos do candle 1 ao 3.
-        const idx = candles.findIndex((c) => c.t === d.t)
-        return x(new Date(candles[idx - 2].t))
-      })
-      .attr('y', (d) => {
-        const idx = candles.findIndex((c) => c.t === d.t)
-        const c1 = candles[idx - 2]
-        const c3 = candles[idx]
-        // Bullish: gap entre High do C1 e Low do C3
-        // Bearish: gap entre Low do C1 e High do C3
-        return d.fvg === 'bullish' ? y(c3.l) : y(c1.l)
-      })
-      .attr('width', (d) => {
-        // Largura cobrindo os 3 candles do padrão
-        const idx = candles.findIndex((c) => c.t === d.t)
-        return (
-          x(new Date(candles[idx].t)) -
-          x(new Date(candles[idx - 2].t)) +
-          candleWidth
-        )
-      })
-      .attr('height', (d) => {
-        const idx = candles.findIndex((c) => c.t === d.t)
-        const c1 = candles[idx - 2]
-        const c3 = candles[idx]
-        return Math.abs(y(c1.h) - y(c3.l))
-      })
-      .attr('fill', (d) => (d.fvg === 'bullish' ? '#22c55e' : '#ef4444'))
-      .attr('fill-opacity', 0.15) // Opacidade baixa para não tapar os candles
-      .attr('stroke', (d) => (d.fvg === 'bullish' ? '#22c55e' : '#ef4444'))
-      .attr('stroke-width', 0.5)
-      .attr('stroke-dasharray', '2,2')
-  }, [candles, width, height])
-  return <svg ref={svgRef} />
+  if (!x || !y) return null
+
+  return (
+    <div style={{ width: '100%', height: '60%', contain: 'strict' }}>
+      <svg width={width} height={height} style={{ display: 'block' }}>
+        <g transform={`translate(${margin.left},${margin.top})`}>
+          {/* Eixo Y */}
+          <g fontSize="10" fill="#444" textAnchor="end">
+            {y.ticks(6).map((tick) => (
+              <text key={tick} x="-5" y={y(tick) + 4}>{d3.format(',.2f')(tick)}</text>
+            ))}
+          </g>
+
+          {candles.map((d) => {
+            const isBullish = d.c >= d.o
+            const color = isBullish ? '#22c55e' : '#ef4444'
+            const xPos = x(new Date(d.t))
+
+            return (
+              <g key={d.t}>
+                {/* Candle Wick & Body */}
+                <line x1={xPos} x2={xPos} y1={y(d.h)} y2={y(d.l)} stroke={color} strokeWidth={1} />
+                <rect
+                  x={xPos - candleWidth / 2}
+                  y={y(Math.max(d.o, d.c))}
+                  width={candleWidth}
+                  height={Math.max(1, Math.abs(y(d.o) - y(d.c)))}
+                  fill={color}
+                  shapeRendering="crispEdges"
+                />
+
+                {/* BOS - Raio (⚡) */}
+                {d.bos && (
+                  <text
+                    x={xPos}
+                    y={d.bos === 'bullish' ? y(d.h) - 15 : y(d.l) + 25}
+                    textAnchor="middle"
+                    fontSize="14"
+                    fill={d.bos === 'bullish' ? '#22c55e' : '#ef4444'}
+                    style={{ fontWeight: 'bold' }}
+                  >
+                    ⚡
+                    <tspan x={xPos} dy="10" fontSize="8">BOS</tspan>
+                  </text>
+                )}
+
+                {/* CHoCH - Caveira (💀) */}
+                {d.choch && (
+                  <text
+                    x={xPos}
+                    y={d.choch === 'bullish' ? y(d.h) - 15 : y(d.l) + 25}
+                    textAnchor="middle"
+                    fontSize="14"
+                    fill={d.choch === 'bullish' ? '#22c55e' : '#ef4444'}
+                  >
+                    💀
+                    <tspan x={xPos} dy="10" fontSize="8">CHoCH</tspan>
+                  </text>
+                )}
+              </g>
+            )
+          })}
+
+          {/* EMAs */}
+          {emaPaths.map((ema) => (
+            <path key={ema.key} d={ema.path || ''} fill="none" stroke={ema.color} strokeWidth={1.5} opacity={0.6} />
+          ))}
+
+          {/* Crosshair */}
+          {hoverX !== undefined && (
+            <line x1={hoverX - margin.left} x2={hoverX - margin.left} y1={0} y2={innerHeight} stroke="#fff" strokeWidth={1} strokeDasharray="4,4" opacity={0.5} />
+          )}
+        </g>
+      </svg>
+    </div>
+  )
 }

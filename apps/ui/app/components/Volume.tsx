@@ -1,40 +1,33 @@
-import { useEffect, useRef } from 'react'
-import { ChartData } from '../stores/chart'
+import { useMemo } from 'react'
+import { CandleUI } from '../types'
 import * as d3 from 'd3'
 
 interface Props {
   width: number
   height: number
-  candles: ChartData[]
+  candles: CandleUI[]
+  hoverX?: number
 }
 
-export const VolumeChart = ({ width, height, candles }: Props) => {
-  const svgRef = useRef<SVGSVGElement | null>(null)
+export const Volume = ({ width, height, candles, hoverX }: Props) => {
+  const margin = useMemo(
+    () => ({ top: 5, right: 50, bottom: 20, left: 60 }),
+    []
+  )
 
-  useEffect(() => {
-    if (!candles.length) return
+  const innerWidth = Math.floor(Math.max(0, width - margin.left - margin.right))
+  const innerHeight = Math.floor(
+    Math.max(0, height - margin.top - margin.bottom)
+  )
 
-    // ================= MARGENS =================
-    const margin = { top: 5, right: 50, bottom: 5, left: 60 }
-    const innerWidth = width - margin.left - margin.right
-    const innerHeight = height - margin.top - margin.bottom
+  const { x, y, barWidth } = useMemo(() => {
+    if (!candles.length || innerWidth <= 0 || innerHeight <= 0)
+      return { x: null, y: null, barWidth: 0 }
 
-    // ================= SVG =================
-    const svg = d3.select(svgRef.current)
-    svg.attr('viewBox', `0 0 ${width} ${height}`)
-
-    // ================= GRUPO =================
-    let volumeG = svg.select<SVGGElement>('.volume-group')
-    if (volumeG.empty()) {
-      volumeG = svg.append('g').attr('class', 'volume-group')
-    }
-    volumeG.attr('transform', `translate(${margin.left},${margin.top})`)
-
-    // ================= ESCALAS =================
     const timeExtent = d3.extent(candles, (d) => d.t) as [number, number]
     const step = candles.length > 1 ? candles[1].t - candles[0].t : 60_000
 
-    const x = d3
+    const xScale = d3
       .scaleTime()
       .domain([
         new Date(timeExtent[0] - step / 2),
@@ -42,43 +35,78 @@ export const VolumeChart = ({ width, height, candles }: Props) => {
       ])
       .range([0, innerWidth])
 
-    const volMax = d3.max(candles, (d) => d.v)!
-    const y = d3.scaleLinear().domain([0, volMax]).range([innerHeight, 0]) // 0 (min volume) fica no fundo, max no topo
+    const volMax = d3.max(candles, (d) => d.v) || 0
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, volMax * 1.05])
+      .range([innerHeight, 0])
 
-    // ================= EIXOS =================
-    volumeG
-      .selectAll<SVGGElement, null>('.x-axis')
-      .data([null])
-      .join('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x).ticks(Math.min(candles.length, 6)))
+    const bWidth = Math.max(1, (innerWidth / candles.length) * 0.8)
 
-    volumeG
-      .selectAll<SVGGElement, null>('.y-axis')
-      .data([null])
-      .join('g')
-      .attr('class', 'y-axis')
-      .call(d3.axisLeft(y).ticks(4))
+    return { x: xScale, y: yScale, barWidth: bWidth }
+  }, [candles, innerWidth, innerHeight])
 
-    // ================= BARRAS =================
-    const barWidth = Math.max(1, (innerWidth / candles.length) * 0.8)
+  if (width <= 0 || height <= 0 || !x || !y) return null
 
-    volumeG
-      .selectAll<SVGRectElement, ChartData>('.vol-bar')
-      .data(candles)
-      .join('rect')
-      .attr('class', 'vol-bar')
-      .attr('x', (d) => x(new Date(d.t)) - barWidth / 2)
-      .attr('width', barWidth)
-      .attr('y', (d) => y(d.v)) // topo da barra
-      .attr('height', (d) => y(0) - y(d.v)) // altura correta
-      .attr('fill', (d) =>
-        d.volumeSpike ? '#facc15' : d.c >= d.o ? '#16a34a' : '#dc2626'
-      )
+  return (
+    <div style={{ width: '100%', height: '20%', contain: 'strict' }}>
+      <svg
+        width={width}
+        height={height}
+        style={{
+          display: 'block',
+          pointerEvents: 'none',
+          shapeRendering: 'crispEdges',
+        }}
+      >
+        <g transform={`translate(${margin.left},${margin.top})`}>
+          <g
+            className="y-axis-labels"
+            fontSize="10"
+            fill="#666"
+            textAnchor="end"
+          >
+            {y.ticks(4).map((tick) => (
+              <text key={tick} x="-5" y={y(tick) + 4}>
+                {d3.format('.2s')(tick)}
+              </text>
+            ))}
+          </g>
 
-    // ================= DEBUG =================
-  }, [candles, width, height])
-
-  return <svg ref={svgRef} />
+          {candles.map((d) => {
+            const barHeight = Math.max(0, innerHeight - y(d.v))
+            return (
+              <rect
+                key={d.t}
+                x={x(new Date(d.t)) - barWidth / 2}
+                y={y(d.v)}
+                width={barWidth}
+                height={barHeight}
+                fill={
+                  d.isVolumeSpike
+                    ? '#facc15'
+                    : d.c >= d.o
+                      ? '#22c55e'
+                      : '#ef4444'
+                }
+                shapeRendering="crispEdges"
+              />
+            )
+          })}
+          {hoverX !== undefined && (
+            <line
+              x1={hoverX}
+              x2={hoverX}
+              y1={0}
+              y2={innerHeight}
+              stroke="#ffffff"
+              strokeWidth={1}
+              strokeDasharray="4,4"
+              style={{ opacity: 0.5, pointerEvents: 'none' }}
+            />
+          )}
+        </g>
+      </svg>
+    </div>
+  )
 }
