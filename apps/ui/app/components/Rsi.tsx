@@ -55,7 +55,7 @@ export const Rsi = ({ width, height, candles, hoverX }: Props) => {
   if (!x || !y || width <= 0 || height <= 0) return null
 
   return (
-    <div style={{ width: '100%', height: '20%', contain: 'strict' }}>
+    <div style={{ width: '100%', height: '100%', contain: 'strict' }}>
       <svg width={width} height={height} style={{ display: 'block' }}>
         <g transform={`translate(${margin.left},${margin.top})`}>
           {/* Linhas de Referência RSI */}
