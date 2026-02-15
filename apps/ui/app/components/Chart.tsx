@@ -17,7 +17,7 @@ export const Chart = ({ interval }: Props) => {
     candle: CandleUI
     x: number
   } | null>(null)
-  const [count, setCount] = useState(60)
+  const [count, setCount] = useState(250)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const candles = useChartStore((state) => state.candles[interval])
   const { width, height } = useChartDimensions(containerRef)
@@ -106,7 +106,7 @@ export const Chart = ({ interval }: Props) => {
         />
       </div>
       <div style={{ display: 'flex', gap: 10, padding: 8, flex: 0 }}>
-        {[60, 120, 240, 480, 960].map((n) => (
+        {[250, 500, 1000, 2000].map((n) => (
           <label key={n} style={{ cursor: 'pointer' }}>
             <input
               type="radio"
