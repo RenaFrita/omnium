@@ -64,6 +64,9 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
 
   if (!x || !y) return null
 
+  const signals = candles.filter((c) => c.bos || c.choch)
+
+  if (signals.length) console.log(signals)
   return (
     <div style={{ width: '100%', height: '60%', contain: 'strict' }}>
       <svg width={width} height={height} style={{ display: 'block' }}>

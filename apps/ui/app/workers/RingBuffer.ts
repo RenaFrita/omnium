@@ -97,7 +97,6 @@ export class RingBuffer {
     const next1 = this.get(index + 1)
     const next2 = this.get(index + 2)
 
-    // Precisamos de 2 velas de cada lado para confirmar o pivot
     if (!prev1 || !prev2 || !next1 || !next2) return
 
     let swingType: SwingType = null
@@ -134,7 +133,6 @@ export class RingBuffer {
     }
 
     curr.swing = swing
-    curr.bias = this.detectBias(this.get(index - 1)?.bias ?? null, swing)
   }
 
   private detectStructure(index: number) {
@@ -142,11 +140,11 @@ export class RingBuffer {
     const prevCandle = this.get(index - 1)
     if (!candle || !prevCandle) return
 
-    // 1. Garantir que o bias atual nunca seja null para a lógica funcionar
-    if (candle.bias === null) {
-      candle.bias =
-        candle.c > (candle.ema200 ?? candle.c) ? 'bullish' : 'bearish'
-    }
+    // O bias da vela atual deve vir SEMPRE da vela anterior para comparação honesta
+    const currentTrend =
+      prevCandle.bias ??
+      (candle.c > (candle.ema200 ?? candle.c) ? 'bullish' : 'bearish')
+    candle.bias = currentTrend
 
     const { highs, lows } = this.getLastTwoPivots(index)
     if (!highs.length || !lows.length) return
@@ -154,22 +152,22 @@ export class RingBuffer {
     const lastHigh = highs[0]
     const lastLow = lows[0]
 
-    // 2. Só permitimos um novo sinal se o fechamento anterior NÃO tivesse rompido o mesmo pivot
-    // Isto evita o spam de ícones que vês na tua imagem
     const isBreakoutBull = candle.c > lastHigh && prevCandle.c <= lastHigh
     const isBreakoutBear = candle.c < lastLow && prevCandle.c >= lastLow
 
     if (isBreakoutBull) {
-      if (candle.bias === 'bearish') {
+      // Se o preço rompe o topo e estávamos em queda -> Reversão (Caveira)
+      if (currentTrend === 'bearish') {
         candle.choch = 'bullish'
-        candle.bias = 'bullish' // Inverte a tendência
+        candle.bias = 'bullish'
       } else {
         candle.bos = 'bullish'
       }
     } else if (isBreakoutBear) {
-      if (candle.bias === 'bullish') {
+      // Se o preço rompe o fundo e estávamos em alta -> Reversão (Caveira)
+      if (currentTrend === 'bullish') {
         candle.choch = 'bearish'
-        candle.bias = 'bearish' // Inverte a tendência
+        candle.bias = 'bearish'
       } else {
         candle.bos = 'bearish'
       }
@@ -193,13 +191,6 @@ export class RingBuffer {
     }
 
     return { highs, lows }
-  }
-
-  private detectBias(prev: Bias, swing: Swing): Bias {
-    if (!swing) return prev
-    if (swing === 'HH' || swing === 'HL') return 'bullish'
-    if (swing === 'LL' || swing === 'LH') return 'bearish'
-    return prev
   }
 
   private get(index: number): CandleUI | undefined {
