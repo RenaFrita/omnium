@@ -1,4 +1,4 @@
-import { Bias, Candle, CandleUI, Swing, SwingType } from '../types'
+import { Candle, CandleUI, Swing, SwingType } from '../types'
 import { RSI } from './RSI'
 
 export class RingBuffer {
