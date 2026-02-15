@@ -49,7 +49,7 @@ export const Volume = ({ width, height, candles, hoverX }: Props) => {
   if (width <= 0 || height <= 0 || !x || !y) return null
 
   return (
-    <div style={{ width: '100%', height: '20%', contain: 'strict' }}>
+    <div style={{ width: '100%', height: '100%', contain: 'strict' }}>
       <svg
         width={width}
         height={height}

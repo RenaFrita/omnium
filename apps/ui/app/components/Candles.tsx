@@ -1,3 +1,4 @@
+'use client'
 import { useMemo } from 'react'
 import { CandleUI } from '../types'
 import * as d3 from 'd3'
@@ -7,20 +8,33 @@ interface Props {
   width: number
   height: number
   hoverX?: number
+  indicators: {
+    ema20: boolean
+    ema50: boolean
+    ema100: boolean
+    ema200: boolean
+  }
 }
 
 const emaConfigs = [
-  { key: 'ema20' as const, color: '#3b82f6' },
-  { key: 'ema50' as const, color: '#f59e0b' },
-  { key: 'ema100' as const, color: '#ec4899' },
-  { key: 'ema200' as const, color: '#94a3b8' },
+  { key: 'ema20' as const, color: '#3b82f6' }, // Blue
+  { key: 'ema50' as const, color: '#f59e0b' }, // Amber
+  { key: 'ema100' as const, color: '#ec4899' }, // Pink
+  { key: 'ema200' as const, color: '#94a3b8' }, // Slate
 ]
 
-export const Candles = ({ candles, width, height, hoverX }: Props) => {
+export const Candles = ({
+  candles,
+  width,
+  height,
+  hoverX,
+  indicators,
+}: Props) => {
   const margin = useMemo(
     () => ({ top: 20, right: 50, bottom: 20, left: 60 }),
     []
   )
+
   const innerWidth = Math.max(0, width - margin.left - margin.right)
   const innerHeight = Math.max(0, height - margin.top - margin.bottom)
 
@@ -56,7 +70,12 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
         .x((d) => xScale(new Date(d.t)))
         .y((d) => yScale(d[config.key]!))
         .curve(d3.curveMonotoneX)
-      return { path: lineGen(candles), color: config.color, key: config.key }
+
+      return {
+        path: lineGen(candles),
+        color: config.color,
+        key: config.key,
+      }
     })
 
     return { x: xScale, y: yScale, candleWidth: cWidth, emaPaths: paths }
@@ -64,22 +83,34 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
 
   if (!x || !y) return null
 
-  const signals = candles.filter((c) => c.bos || c.choch)
-
-  if (signals.length) console.log(signals)
   return (
-    <div style={{ width: '100%', height: '60%', contain: 'strict' }}>
+    <div style={{ width: '100%', height: '100%', contain: 'strict' }}>
       <svg width={width} height={height} style={{ display: 'block' }}>
         <g transform={`translate(${margin.left},${margin.top})`}>
-          {/* Eixo Y */}
-          <g fontSize="10" fill="#444" textAnchor="end">
+          {/* Grelha de Fundo Horizontal (Opcional, ajuda na leitura) */}
+          <g opacity={0.05}>
             {y.ticks(6).map((tick) => (
-              <text key={tick} x="-5" y={y(tick) + 4}>
+              <line
+                key={`grid-${tick}`}
+                x1={0}
+                x2={innerWidth}
+                y1={y(tick)}
+                y2={y(tick)}
+                stroke="white"
+              />
+            ))}
+          </g>
+
+          {/* Eixo Y */}
+          <g fontSize="10" fill="#64748b" textAnchor="end">
+            {y.ticks(6).map((tick) => (
+              <text key={tick} x="-8" y={y(tick) + 4}>
                 {d3.format(',.2f')(tick)}
               </text>
             ))}
           </g>
 
+          {/* Desenho das Velas e Sinais */}
           {candles.map((d) => {
             const isBullish = d.c >= d.o
             const color = isBullish ? '#22c55e' : '#ef4444'
@@ -87,7 +118,6 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
 
             return (
               <g key={d.t}>
-                {/* Candle Wick & Body */}
                 <line
                   x1={xPos}
                   x2={xPos}
@@ -105,34 +135,33 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
                   shapeRendering="crispEdges"
                 />
 
-                {/* BOS - Raio (⚡) */}
+                {/* BOS Sinais */}
                 {d.bos && (
                   <text
                     x={xPos}
                     y={d.bos === 'bullish' ? y(d.h) - 15 : y(d.l) + 25}
                     textAnchor="middle"
-                    fontSize="14"
+                    fontSize="12"
                     fill={d.bos === 'bullish' ? '#22c55e' : '#ef4444'}
-                    style={{ fontWeight: 'bold' }}
                   >
-                    ⚡
-                    <tspan x={xPos} dy="10" fontSize="8">
+                    ⚡{' '}
+                    <tspan x={xPos} dy="10" fontSize="7" fontWeight="bold">
                       BOS
                     </tspan>
                   </text>
                 )}
 
-                {/* CHoCH - Caveira (💀) */}
+                {/* CHoCH Sinais */}
                 {d.choch && (
                   <text
                     x={xPos}
                     y={d.choch === 'bullish' ? y(d.h) - 15 : y(d.l) + 25}
                     textAnchor="middle"
-                    fontSize="14"
+                    fontSize="12"
                     fill={d.choch === 'bullish' ? '#22c55e' : '#ef4444'}
                   >
-                    💀
-                    <tspan x={xPos} dy="10" fontSize="8">
+                    💀{' '}
+                    <tspan x={xPos} dy="10" fontSize="7" fontWeight="bold">
                       CHoCH
                     </tspan>
                   </text>
@@ -141,18 +170,23 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
             )
           })}
 
-          {/* EMAs */}
-          {emaPaths.map((ema) => (
-            <path
-              key={ema.key}
-              d={ema.path || ''}
-              fill="none"
-              stroke={ema.color}
-              strokeWidth={1.5}
-              opacity={0.6}
-            />
-          ))}
+          {/* Renderização Condicional das EMAs */}
+          {emaPaths
+            .filter((ema) => indicators[ema.key]) // Aqui ligamos/desligamos
+            .map((ema) => (
+              <path
+                key={ema.key}
+                d={ema.path || ''}
+                fill="none"
+                stroke={ema.color}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                opacity={0.8}
+                style={{ transition: 'opacity 0.2s' }}
+              />
+            ))}
 
+          {/* Cursor Vertical (Crosshair) */}
           {hoverX !== undefined && (
             <line
               x1={hoverX}
@@ -162,7 +196,7 @@ export const Candles = ({ candles, width, height, hoverX }: Props) => {
               stroke="#ffffff"
               strokeWidth={1}
               strokeDasharray="4,4"
-              style={{ opacity: 0.5, pointerEvents: 'none' }}
+              style={{ opacity: 0.3, pointerEvents: 'none' }}
             />
           )}
         </g>
