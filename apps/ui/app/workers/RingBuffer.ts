@@ -1,4 +1,4 @@
-import { Candle, CandleUI, Swing, SwingType } from '../types'
+import { Trade, CandleUI, Swing, SwingType } from '../types'
 import { RSI } from './RSI'
 
 export class RingBuffer {
@@ -14,18 +14,18 @@ export class RingBuffer {
   /**
    * Adiciona ou atualiza uma vela e processa indicadores e estrutura de mercado.
    */
-  add(candle: Candle): CandleUI {
-    const c = +candle.c
-    const v = +candle.v
-    const o = +candle.o
-    const h = +candle.h
-    const l = +candle.l
+  add(trade: Trade): CandleUI {
+    const c = +trade.c
+    const v = +trade.v
+    const o = +trade.o
+    const h = +trade.h
+    const l = +trade.l
 
     const prevIdx = (this.pointer - 1 + this.size) % this.size
-    const lastCandle = this.buffer[prevIdx]
+    const lastTrade = this.buffer[prevIdx]
 
     // Verifica se é um update da mesma vela (ex: WebSocket tick)
-    const isUpdate = lastCandle && lastCandle.t === candle.t
+    const isUpdate = lastTrade && lastTrade.t === trade.t
 
     // A base para cálculos (EMA/RSI) deve ser a vela anterior real
     const baseIdx = isUpdate
@@ -44,8 +44,8 @@ export class RingBuffer {
     const isVolumeSpike = volSMA ? v > volSMA * 2.0 : false
 
     // Nova vela herda o bias da anterior para continuidade da tendência
-    const newCandle: CandleUI = {
-      ...candle,
+    const newTrade: CandleUI = {
+      ...trade,
       o,
       h,
       l,
@@ -58,7 +58,7 @@ export class RingBuffer {
       rsi,
       volumeSMA20: volSMA,
       isVolumeSpike,
-      bias: lastCandle?.bias ?? (c > ema200 ? 'bullish' : 'bearish'),
+      bias: lastTrade?.bias ?? (c > ema200 ? 'bullish' : 'bearish'),
       swing: null,
       swingType: null,
       bos: null,
@@ -69,10 +69,10 @@ export class RingBuffer {
 
     if (isUpdate) {
       currentIndex = prevIdx
-      this.buffer[prevIdx] = newCandle
+      this.buffer[prevIdx] = newTrade
     } else {
       currentIndex = this.pointer
-      this.buffer[this.pointer] = newCandle
+      this.buffer[this.pointer] = newTrade
       this.pointer = (this.pointer + 1) % this.size
       if (this.pointer === 0) this.isFull = true
     }
@@ -86,6 +86,50 @@ export class RingBuffer {
 
     // Retorna a referência do buffer para garantir que as mutações sejam enviadas ao UI
     return this.buffer[currentIndex]!
+  }
+
+  /**
+   * Calcula indicadores para um draft sem guardar no buffer.
+   * Usado para candles em construção (não fechadas).
+   */
+  addDraft(trade: Trade): CandleUI {
+    const c = +trade.c
+    const v = +trade.v
+
+    const prevIdx = (this.pointer - 1 + this.size) % this.size
+    const lastCandle = this.buffer[prevIdx]
+
+    const isNewCandle = !lastCandle || lastCandle.t !== trade.t
+
+    const base = isNewCandle
+      ? lastCandle
+      : this.buffer[(prevIdx - 1 + this.size) % this.size]
+
+    const ema20 = this.calculateEMA(c, base?.ema20, 20)
+    const ema50 = this.calculateEMA(c, base?.ema50, 50)
+    const ema100 = this.calculateEMA(c, base?.ema100, 100)
+    const ema200 = this.calculateEMA(c, base?.ema200, 200)
+
+    const rsi = this.rsiCalc.calculate(c, 14, isNewCandle)
+
+    const volSMA = this.getFastVolumeSMA(20, isNewCandle ? 0 : 1)
+    const isVolumeSpike = volSMA ? v > volSMA * 2.0 : false
+
+    return {
+      ...trade,
+      ema20,
+      ema50,
+      ema100,
+      ema200,
+      rsi,
+      volumeSMA20: volSMA,
+      isVolumeSpike,
+      bias: lastCandle?.bias ?? (c > ema200 ? 'bullish' : 'bearish'),
+      swing: lastCandle?.swing ?? null,
+      swingType: lastCandle?.swingType ?? null,
+      bos: lastCandle?.bos ?? null,
+      choch: lastCandle?.choch ?? null,
+    }
   }
 
   private detectFractal(index: number) {

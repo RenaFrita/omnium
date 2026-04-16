@@ -1,13 +1,14 @@
-// candle-data-worker.ts
-import { Candle } from '../types'
+// trade-data-worker.ts
+import { WsTrade } from '../types'
 import { RingBuffer } from './RingBuffer'
+import { DraftManager } from './Draft'
 
-// --- Gestão do Worker e WebSocket ---
+const MAX_BUFFER = 1000000
 
 let socket: WebSocket | null = null
 let pingInterval: ReturnType<typeof setInterval> | null = null
 const buffers = new Map<string, RingBuffer>()
-const MAX_BUFFER = 2000
+let draftManager: DraftManager
 
 self.onmessage = (e: MessageEvent) => {
   const { type, coin, intervals, interval } = e.data
@@ -33,13 +34,15 @@ function connect(coin: string, intervals: string[]) {
     console.log('[Worker] Connected to Hyperliquid')
     intervals.forEach((i) => {
       if (!buffers.has(i)) buffers.set(i, new RingBuffer(MAX_BUFFER))
-      socket?.send(
-        JSON.stringify({
-          method: 'subscribe',
-          subscription: { type: 'candle', coin, interval: i },
-        })
-      )
     })
+    draftManager = new DraftManager(buffers)
+
+    socket?.send(
+      JSON.stringify({
+        method: 'subscribe',
+        subscription: { type: 'trades', coin },
+      })
+    )
 
     pingInterval = setInterval(() => {
       if (socket?.readyState === WebSocket.OPEN) {
@@ -50,12 +53,12 @@ function connect(coin: string, intervals: string[]) {
 
   socket.onmessage = (event) => {
     const msg = JSON.parse(event.data)
-    if (msg.channel === 'candle' && msg.data) {
-      const candleData: Candle = msg.data
-      const buffer = buffers.get(candleData.i)
-      if (buffer) {
-        const updatedCandle = buffer.add(candleData)
-        self.postMessage({ type: 'CANDLE_UPDATE', candle: updatedCandle })
+    if (msg.channel === 'trades' && Array.isArray(msg.data)) {
+      const trades: WsTrade[] = msg.data
+      for (const wsTrade of trades) {
+        draftManager.processTrade(wsTrade, (candle, interval) => {
+          self.postMessage({ type: 'CANDLE_UPDATE', candle, interval })
+        })
       }
     }
   }
