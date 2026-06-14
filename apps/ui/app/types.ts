@@ -1,5 +1,11 @@
 import { intervals } from './constants'
 
+export type PerpMeta = {
+  name: string
+  szDecimals: number
+  maxLeverage: number
+}
+
 export interface Trade {
   t: number // open millis
   T: number // close millis

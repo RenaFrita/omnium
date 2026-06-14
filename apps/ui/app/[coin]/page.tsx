@@ -8,5 +8,5 @@ interface PageProps {
 
 export default async function CoinPage({ params }: PageProps) {
   const { coin } = await params
-  return <Container coin={coin.toLocaleUpperCase()} />
+  return <Container coin={decodeURIComponent(coin)} />
 }
