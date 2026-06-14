@@ -110,7 +110,7 @@ export class RingBuffer {
     const ema100 = this.calculateEMA(c, base?.ema100, 100)
     const ema200 = this.calculateEMA(c, base?.ema200, 200)
 
-    const rsi = this.rsiCalc.calculate(c, 14, isNewCandle)
+    const rsi = this.rsiCalc.calculate(c, 14, false)
 
     const volSMA = this.getFastVolumeSMA(20, isNewCandle ? 0 : 1)
     const isVolumeSpike = volSMA ? v > volSMA * 2.0 : false
