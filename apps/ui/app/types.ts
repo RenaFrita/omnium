@@ -71,3 +71,17 @@ export interface WsLevel {
   sz: string // size
   n: number // number of orders
 }
+
+export type OrderBookDelta = {
+  ts: number
+  side: 'bid' | 'ask'
+  price: number
+  size: number
+}
+
+export type AggressiveTrade = {
+  price: number
+  size: number
+  side: 'B' | 'A'
+  time: number
+}

@@ -16,6 +16,7 @@ export const useChartStore = create<ChartState>((set) => ({
     '30m': [],
     '1h': [],
     '4h': [],
+    '1D': [],
   },
   setCandles: (interval, history) =>
     set((state) => ({
@@ -46,6 +47,6 @@ export const useChartStore = create<ChartState>((set) => ({
 
   clearStore: () =>
     set({
-      candles: { '1m': [], '5m': [], '15m': [], '30m': [], '1h': [], '4h': [] },
+      candles: { '1m': [], '5m': [], '15m': [], '30m': [], '1h': [], '4h': [], '1D': [] },
     }),
 }))

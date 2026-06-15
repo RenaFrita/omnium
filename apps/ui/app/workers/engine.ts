@@ -1,5 +1,5 @@
 // trade-data-worker.ts
-import { WsTrade } from '../types'
+import { WsTrade, WsBook, WsLevel } from '../types'
 import { RingBuffer } from './RingBuffer'
 import { DraftManager } from './Draft'
 
@@ -44,6 +44,13 @@ function connect(coin: string, intervals: string[]) {
       })
     )
 
+    socket?.send(
+      JSON.stringify({
+        method: 'subscribe',
+        subscription: { type: 'l2Book', coin },
+      })
+    )
+
     pingInterval = setInterval(() => {
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ method: 'ping' }))
@@ -55,11 +62,30 @@ function connect(coin: string, intervals: string[]) {
     const msg = JSON.parse(event.data)
     if (msg.channel === 'trades' && Array.isArray(msg.data)) {
       const trades: WsTrade[] = msg.data
+      const aggressiveTrades: { price: number; size: number; side: string; time: number }[] = []
       for (const wsTrade of trades) {
         draftManager.processTrade(wsTrade, (candle, interval) => {
           self.postMessage({ type: 'CANDLE_UPDATE', candle, interval })
         })
+        aggressiveTrades.push({
+          price: +wsTrade.px,
+          size: +wsTrade.sz,
+          side: wsTrade.side,
+          time: wsTrade.time,
+        })
       }
+      self.postMessage({ type: 'AGGRESSIVE_TRADES', trades: aggressiveTrades })
+    }
+
+    if (msg.channel === 'l2Book') {
+      const book = msg.data as WsBook
+      const mapLevel = (l: WsLevel) => ({
+        price: +l.px,
+        size: +l.sz,
+      })
+      const bids = book.levels[0].map(mapLevel)
+      const asks = book.levels[1].map(mapLevel)
+      self.postMessage({ type: 'ORDER_BOOK', bids, asks })
     }
   }
 

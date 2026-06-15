@@ -8,6 +8,7 @@ export const INTERVAL_MS: Record<Interval, number> = {
   '30m': 30 * 60 * 1000,
   '1h': 60 * 60 * 1000,
   '4h': 4 * 60 * 60 * 1000,
+  '1D': 24 * 60 * 60 * 1000,
 }
 
 export class DraftManager {

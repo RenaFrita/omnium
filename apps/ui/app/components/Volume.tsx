@@ -11,7 +11,7 @@ interface Props {
 
 export const Volume = ({ width, height, candles, hoverX }: Props) => {
   const margin = useMemo(
-    () => ({ top: 5, right: 50, bottom: 20, left: 60 }),
+    () => ({ top: 5, right: 150, bottom: 20, left: 10 }),
     []
   )
 
@@ -64,10 +64,10 @@ export const Volume = ({ width, height, candles, hoverX }: Props) => {
             className="y-axis-labels"
             fontSize="10"
             fill="#666"
-            textAnchor="end"
+            textAnchor="start"
           >
             {y.ticks(4).map((tick) => (
-              <text key={tick} x="-5" y={y(tick) + 4}>
+              <text key={tick} x={innerWidth + 8} y={y(tick) + 4}>
                 {d3.format('.2s')(tick)}
               </text>
             ))}

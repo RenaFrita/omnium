@@ -12,7 +12,7 @@ interface Props {
 export const Rsi = ({ width, height, candles, hoverX }: Props) => {
   // 1. Aumentamos o bottom para 35 para caber o texto do eixo X
   const margin = useMemo(
-    () => ({ top: 10, right: 50, bottom: 35, left: 60 }),
+    () => ({ top: 10, right: 150, bottom: 35, left: 10 }),
     []
   )
   const innerWidth = Math.max(0, width - margin.left - margin.right)
@@ -64,9 +64,9 @@ export const Rsi = ({ width, height, candles, hoverX }: Props) => {
           <line x1={0} x2={innerWidth} y1={y(50)} y2={y(50)} stroke="#222" strokeOpacity="0.5" />
 
           {/* Eixo Y (Níveis RSI) */}
-          <g fontSize="9" fill="#666" textAnchor="end">
+          <g fontSize="10" fill="#64748b" textAnchor="start">
             {[30, 50, 70].map((tick) => (
-              <text key={tick} x="-5" y={y(tick) + 3}>{tick}</text>
+              <text key={tick} x={innerWidth + 8} y={y(tick) + 4}>{tick}</text>
             ))}
           </g>
 
