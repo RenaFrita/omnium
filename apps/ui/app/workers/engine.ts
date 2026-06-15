@@ -1,7 +1,7 @@
 // trade-data-worker.ts
-import { WsTrade, WsBook, WsLevel } from '../types'
+import { WsTrade, WsBook, WsLevel, Trade, Interval } from '../types'
 import { RingBuffer } from './RingBuffer'
-import { DraftManager } from './Draft'
+import { DraftManager, INTERVAL_MS } from './Draft'
 
 const MAX_BUFFER = 1000000
 
@@ -9,13 +9,51 @@ let socket: WebSocket | null = null
 let pingInterval: ReturnType<typeof setInterval> | null = null
 const buffers = new Map<string, RingBuffer>()
 let draftManager: DraftManager
+let currentCoin = ''
 
-self.onmessage = (e: MessageEvent) => {
+async function fetchHistory(interval: string) {
+  const buffer = buffers.get(interval)
+  if (!buffer) return
+
+  const intervalMs = INTERVAL_MS[interval as Interval]
+  const maxLookback = 365 * 24 * 60 * 60 * 1000 // 1 year max
+  const numCandles = Math.min(500, Math.ceil(maxLookback / intervalMs))
+  const endTime = Date.now()
+  const startTime = endTime - intervalMs * numCandles
+
+  try {
+    const res = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'candleSnapshot',
+        req: { coin: currentCoin, interval, startTime, endTime },
+      }),
+    })
+    const json = await res.json()
+    if (!Array.isArray(json)) {
+      console.warn('[Worker] Unexpected candleSnapshot response:', json)
+      return
+    }
+    for (const c of json) {
+      buffer.add(c as Trade)
+    }
+    const history = buffer.getHistory()
+    self.postMessage({ type: 'HISTORY_DATA', interval, history })
+  } catch (err) {
+    console.warn('[Worker] Failed to fetch history:', err)
+  }
+}
+
+self.onmessage = async (e: MessageEvent) => {
   const { type, coin, intervals, interval } = e.data
 
   switch (type) {
     case 'CONNECT':
       connect(coin, intervals)
+      break
+    case 'FETCH_HISTORY':
+      await fetchHistory(interval)
       break
     case 'GET_HISTORY':
       const history = buffers.get(interval)?.getHistory() || []
@@ -27,15 +65,17 @@ self.onmessage = (e: MessageEvent) => {
 function connect(coin: string, intervals: string[]) {
   if (socket) socket.close()
   if (pingInterval) clearInterval(pingInterval)
+  currentCoin = coin
+
+  intervals.forEach((i) => {
+    if (!buffers.has(i)) buffers.set(i, new RingBuffer(MAX_BUFFER))
+  })
+  draftManager = new DraftManager(buffers)
 
   socket = new WebSocket('wss://api.hyperliquid.xyz/ws')
 
   socket.onopen = () => {
     console.log('[Worker] Connected to Hyperliquid')
-    intervals.forEach((i) => {
-      if (!buffers.has(i)) buffers.set(i, new RingBuffer(MAX_BUFFER))
-    })
-    draftManager = new DraftManager(buffers)
 
     socket?.send(
       JSON.stringify({

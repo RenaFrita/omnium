@@ -12,7 +12,7 @@ interface Props {
 
 export const Container = ({ coin }: Props) => {
   const [interval, setInterval] = useState<Interval>('5m')
-  useWorker(coin)
+  useWorker(coin, interval)
 
   return (
     <section className="relative h-screen bg-slate-950 text-slate-200 flex flex-col overflow-hidden">

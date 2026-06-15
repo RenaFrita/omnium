@@ -7,7 +7,7 @@ import { useChartStore } from '../stores/chart'
 import { useOrderBookStore } from '../stores/orderbook'
 import { useTradesStore } from '../stores/trades'
 
-export const useWorker = (coin: string) => {
+export const useWorker = (coin: string, interval: Interval) => {
   const workerRef = useRef<Worker | null>(null)
   const setCandles = useChartStore((state) => state.setCandles)
   const addCandle = useChartStore((state) => state.addCandle)
@@ -27,14 +27,14 @@ export const useWorker = (coin: string) => {
     })
 
     worker.onmessage = (e: MessageEvent) => {
-      const { type, candle, history, interval, bids, asks, trades } = e.data
+      const { type, candle, history, interval: i, bids, asks, trades } = e.data
 
       switch (type) {
         case 'CANDLE_UPDATE':
           addCandle(candle.i as Interval, candle)
           break
         case 'HISTORY_DATA':
-          setCandles(interval as Interval, history)
+          setCandles(i as Interval, history)
           break
         case 'ORDER_BOOK':
           applyUpdate(bids, asks)
@@ -50,8 +50,12 @@ export const useWorker = (coin: string) => {
     }
   }, [coin, addCandle, setCandles, applyUpdate, addTrades])
 
-  const requestHistory = (interval: Interval) => {
-    workerRef.current?.postMessage({ type: 'GET_HISTORY', interval })
+  useEffect(() => {
+    workerRef.current?.postMessage({ type: 'FETCH_HISTORY', interval })
+  }, [interval])
+
+  const requestHistory = (i: Interval) => {
+    workerRef.current?.postMessage({ type: 'GET_HISTORY', interval: i })
   }
 
   return { requestHistory }
