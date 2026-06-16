@@ -71,3 +71,39 @@ export interface WsLevel {
   sz: string // size
   n: number // number of orders
 }
+
+export type OrderBookDelta = {
+  ts: number
+  side: 'bid' | 'ask'
+  price: number
+  size: number
+}
+
+export type AggressiveTrade = {
+  price: number
+  size: number
+  side: 'B' | 'A'
+  time: number
+}
+
+export interface OrderFlowSnapshot {
+  cvd: number
+  cvdData: { t: string; cvd: number }[]
+  buyVol60: number
+  sellVol60: number
+  tradeRatio: number
+  largePrints: { price: number; size: number; usd: number; side: string; t: string }[]
+  aggrBuys: number
+  aggrSells: number
+  aggrTotal: number
+  aggrRatio: number
+  vwap: number | null
+  bookImb: number
+  bidDepth: number
+  askDepth: number
+  pressureData: { t: string; imbalance: number }[]
+  pendingDir: string | null
+  lastAlert: number
+  cvdThreshold: number
+  largePrintThreshold: number
+}

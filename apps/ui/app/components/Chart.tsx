@@ -20,7 +20,6 @@ export const Chart = ({ interval }: Props) => {
   } | null>(null)
   const [count, setCount] = useState(120)
 
-  // Estados de Visibilidade e Som
   const [showVolume, setShowVolume] = useState(true)
   const [showRsi, setShowRsi] = useState(true)
   const [isAudioEnabled, setIsAudioEnabled] = useState(false)
@@ -33,24 +32,21 @@ export const Chart = ({ interval }: Props) => {
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const lastSignalRef = useRef<number | null>(null) // Para evitar sons repetidos na mesma candle
+  const lastSignalRef = useRef<number | null>(null)
 
   const candles = useChartStore((state) => state.candles[interval])
   const { width, height } = useChartDimensions(containerRef)
 
-  // 1. Inicializar áudio (Client Side)
   useEffect(() => {
-    audioRef.current = new Audio('/long.mp3') // Caminho na pasta public
+    audioRef.current = new Audio('/long.mp3')
   }, [])
 
-  // 2. Monitorizar Sinais (BOS/CHOCH) na última vela
   useEffect(() => {
     if (!isAudioEnabled || candles.length === 0) return
 
     const lastCandle = candles[candles.length - 1]
     const hasSignal = lastCandle.bos || lastCandle.choch
 
-    // Só toca se houver sinal e se ainda não tocámos para este timestamp específico
     if (hasSignal && lastSignalRef.current !== lastCandle.t) {
       audioRef.current
         ?.play()
@@ -71,7 +67,7 @@ export const Chart = ({ interval }: Props) => {
     (e: React.MouseEvent) => {
       if (!containerRef.current || !visible.length) return
       const rect = containerRef.current.getBoundingClientRect()
-      const margin = { left: 60, right: 50 }
+      const margin = { left: 10, right: 150 }
       const innerWidth = width - margin.left - margin.right
       const mouseX = e.clientX - rect.left - margin.left
       if (mouseX < 0 || mouseX > innerWidth) {
@@ -107,58 +103,16 @@ export const Chart = ({ interval }: Props) => {
 
   return (
     <div
-      className="flex flex-col w-full h-full bg-slate-900 select-none relative overflow-hidden"
+      className="flex flex-col w-full h-full bg-slate-900 select-none relative overflow-hidden rounded-lg border border-slate-800"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setHoverData(null)}
     >
-      {/* Tooltip Card (Mantido do anterior) */}
+      {/* Crosshair vertical */}
       {hoverData && (
-        <>
-          <div
-            className="absolute top-0 bottom-0 w-[1px] bg-slate-500/30 pointer-events-none z-10"
-            style={{ left: hoverData.x }}
-          />
-          <div
-            className="absolute z-30 pointer-events-none"
-            style={{
-              left:
-                hoverData.x > width - 200
-                  ? hoverData.x - 190
-                  : hoverData.x + 10,
-              top: '10%',
-            }}
-          >
-            <div className="bg-slate-950/90 backdrop-blur-md border border-slate-700 p-2 rounded shadow-2xl text-[10px] min-w-[120px]">
-              <div className="text-slate-500 border-b border-slate-800 pb-1 mb-1 font-mono">
-                {new Date(hoverData.candle.t).toLocaleTimeString()}
-              </div>
-              <div className="flex justify-between">
-                <span>O:</span>
-                <span className="text-white font-bold">
-                  {hoverData.candle.o}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>H:</span>
-                <span className="text-emerald-400 font-bold">
-                  {hoverData.candle.h}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>L:</span>
-                <span className="text-rose-400 font-bold">
-                  {hoverData.candle.l}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>C:</span>
-                <span className="text-white font-bold">
-                  {hoverData.candle.c}
-                </span>
-              </div>
-            </div>
-          </div>
-        </>
+        <div
+          className="absolute top-0 bottom-0 w-[1px] bg-slate-500/30 pointer-events-none z-10"
+          style={{ left: hoverData.x }}
+        />
       )}
 
       {/* Área Gráfica */}
@@ -179,7 +133,7 @@ export const Chart = ({ interval }: Props) => {
                   ? height * 0.8
                   : height
             }
-            hoverX={hoverData ? hoverData.x - 60 : undefined}
+            hoverX={hoverData ? hoverData.x - 10 : undefined}
             indicators={indicators}
           />
         </div>
@@ -189,7 +143,7 @@ export const Chart = ({ interval }: Props) => {
               candles={visible}
               width={width}
               height={height * 0.2}
-              hoverX={hoverData ? hoverData.x - 60 : undefined}
+              hoverX={hoverData ? hoverData.x - 10 : undefined}
             />
           </div>
         )}
@@ -199,22 +153,21 @@ export const Chart = ({ interval }: Props) => {
               candles={visible}
               width={width}
               height={height * 0.2}
-              hoverX={hoverData ? hoverData.x - 60 : undefined}
+              hoverX={hoverData ? hoverData.x - 10 : undefined}
             />
           </div>
         )}
       </div>
 
       {/* Toolbar Inferior */}
-      <div className="bg-slate-950 border-t border-slate-800 p-2 flex items-center justify-between gap-4 z-20">
+      <div className="bg-slate-950/80 border-t border-slate-800 p-1.5 flex items-center justify-between gap-4 z-20 shrink-0">
         <div className="flex items-center gap-1">
-          {/* Botão de Som */}
           <button
             onClick={() => setIsAudioEnabled(!isAudioEnabled)}
             className={`p-1.5 rounded transition-colors ${isAudioEnabled ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600'}`}
             title={isAudioEnabled ? 'Alertas Ativos' : 'Alertas Mudos'}
           >
-            {isAudioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            {isAudioEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
           </button>
 
           <div className="h-4 w-[1px] bg-slate-800 mx-1" />
@@ -223,16 +176,17 @@ export const Chart = ({ interval }: Props) => {
             onClick={() => setShowVolume(!showVolume)}
             className={`p-1.5 rounded ${showVolume ? 'text-emerald-400 bg-emerald-400/10' : 'text-slate-600'}`}
           >
-            <BarChart3 size={16} />
+            <BarChart3 size={14} />
           </button>
           <button
             onClick={() => setShowRsi(!showRsi)}
             className={`p-1.5 rounded ${showRsi ? 'text-blue-400 bg-blue-400/10' : 'text-slate-600'}`}
           >
-            <Activity size={16} />
+            <Activity size={14} />
           </button>
 
           <div className="h-4 w-[1px] bg-slate-800 mx-1" />
+
           {(['20', '50', '100', '200'] as const).map((ema) => (
             <button
               key={ema}
@@ -243,16 +197,18 @@ export const Chart = ({ interval }: Props) => {
             </button>
           ))}
 
-          <div className="pointer-events-none bg-slate-950/40 p-1 px-3 rounded-full border border-slate-800 text-[10px] text-slate-500">
+          <div className="h-4 w-[1px] bg-slate-800 mx-1" />
+
+          <div className="pointer-events-none bg-slate-950/40 p-0.5 px-2 rounded-full border border-slate-800 text-[10px] text-slate-500">
             MIN:{' '}
-            <span className="text-rose-400 mr-2">{stats.min.toFixed(2)}</span>
+            <span className="text-rose-400 mr-1">{stats.min.toFixed(2)}</span>
             MAX:{' '}
             <span className="text-emerald-400">{stats.max.toFixed(2)}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-1 max-w-xs">
-          <TrendingUp size={14} className="text-slate-500" />
+        <div className="flex items-center gap-2 max-w-[200px]">
+          <TrendingUp size={12} className="text-slate-500 shrink-0" />
           <input
             type="range"
             min="60"
@@ -260,11 +216,9 @@ export const Chart = ({ interval }: Props) => {
             step="10"
             value={count}
             onChange={(e) => setCount(parseInt(e.target.value))}
-            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
           />
-          <span className="text-[10px] font-mono text-slate-500 w-8">
-            {count}
-          </span>
+          <span className="text-[10px] font-mono text-slate-500 w-8">{count}</span>
         </div>
       </div>
     </div>

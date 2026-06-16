@@ -103,7 +103,7 @@ export default function MarketTypeahead({ markets }: Props) {
       {/* Empty state */}
       {isOpen && query && filtered.length === 0 && (
         <div className="absolute mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 font-mono text-sm text-zinc-600">
-          No markets found for "{query}"
+          No markets found for &ldquo;{query}&rdquo;
         </div>
       )}
     </div>
