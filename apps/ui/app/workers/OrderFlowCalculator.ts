@@ -1,9 +1,10 @@
 import type { WsTrade, WsBook, OrderFlowSnapshot } from '../types'
+import { RingBuffer } from '../lib/RingBuffer'
 
 const MAX_CVD_POINTS = 80
 const MAX_PRESSURE_POINTS = 60
 const MAX_LARGE_PRINTS = 6
-const MAX_WINDOW_TRADES = 2000
+const MAX_WINDOW_TRADES = 1000
 const IMBALANCE_LEVELS = 10
 const DEPTH_PCT = 0.5
 const AVG_TRADE_WINDOW = 200
@@ -46,8 +47,11 @@ export interface AlertEvent {
 
 export class OrderFlowCalculator {
   private cvd = 0
-  private cvdData: { t: string; cvd: number }[] = []
-  private windowTrades: WindowTrade[] = []
+  private cvdData = new RingBuffer<{ t: string; cvd: number }>(MAX_CVD_POINTS)
+  private windowTrades: WindowTrade[] = new Array(MAX_WINDOW_TRADES)
+  private wtHead = 0
+  private wtTail = 0
+  private wtCount = 0
   private buyVol60 = 0
   private sellVol60 = 0
   private largePrints: {
@@ -65,14 +69,14 @@ export class OrderFlowCalculator {
   private bookImb = 0
   private bidDepth = 0
   private askDepth = 0
-  private pressureData: { t: string; imbalance: number }[] = []
-  private avgTradeValues: number[] = []
+  private pressureData = new RingBuffer<{ t: string; imbalance: number }>(MAX_PRESSURE_POINTS)
+  private avgTradeValues = new RingBuffer<number>(AVG_TRADE_WINDOW)
   private avgTradeSum = 0
+  private avgTradeCount = 0
   private largePrintMultiplier = 5
 
   private lastSentSnap = ''
 
-  // Alert state
   private lastAlertTs = 0
   private pendingDir: 'LONG' | 'SHORT' | null = null
   private confirmTimer: ReturnType<typeof setTimeout> | null = null
@@ -94,8 +98,11 @@ export class OrderFlowCalculator {
 
   reset() {
     this.cvd = 0
-    this.cvdData = []
-    this.windowTrades = []
+    this.cvdData.clear()
+    this.windowTrades = new Array(MAX_WINDOW_TRADES)
+    this.wtHead = 0
+    this.wtTail = 0
+    this.wtCount = 0
     this.buyVol60 = 0
     this.sellVol60 = 0
     this.largePrints = []
@@ -107,9 +114,10 @@ export class OrderFlowCalculator {
     this.bookImb = 0
     this.bidDepth = 0
     this.askDepth = 0
-    this.pressureData = []
-    this.avgTradeValues = []
+    this.pressureData.clear()
+    this.avgTradeValues.clear()
     this.avgTradeSum = 0
+    this.avgTradeCount = 0
     this.lastAlertTs = 0
     this.clearPending()
   }
@@ -127,8 +135,7 @@ export class OrderFlowCalculator {
   }
 
   private getAvgTradeValue(): number {
-    if (this.avgTradeValues.length === 0) return 0
-    return this.avgTradeSum / this.avgTradeValues.length
+    return this.avgTradeCount > 0 ? this.avgTradeSum / this.avgTradeCount : 0
   }
 
   private getLargePrintThreshold(): number {
@@ -136,12 +143,27 @@ export class OrderFlowCalculator {
   }
 
   private pushAvgTradeValue(usd: number) {
-    this.avgTradeValues.push(usd)
+    const old = this.avgTradeValues.add(usd)
     this.avgTradeSum += usd
-    if (this.avgTradeValues.length > AVG_TRADE_WINDOW) {
-      const old = this.avgTradeValues.shift()!
-      this.avgTradeSum -= old
+    if (old !== undefined) this.avgTradeSum -= old
+    else this.avgTradeCount++
+  }
+
+  private purgeWindowTrades(cutoff: number) {
+    while (this.wtCount > 0 && this.windowTrades[this.wtHead].ts <= cutoff) {
+      const old = this.windowTrades[this.wtHead]
+      if (old.isBuy) this.buyVol60 -= old.vol
+      else this.sellVol60 -= old.vol
+      this.wtHead = (this.wtHead + 1) % MAX_WINDOW_TRADES
+      this.wtCount--
     }
+  }
+
+  private addWindowTrade(t: WindowTrade) {
+    this.windowTrades[this.wtTail] = t
+    this.wtTail = (this.wtTail + 1) % MAX_WINDOW_TRADES
+    if (this.wtCount < MAX_WINDOW_TRADES) this.wtCount++
+    else this.wtHead = (this.wtHead + 1) % MAX_WINDOW_TRADES
   }
 
   private checkAlert() {
@@ -198,27 +220,15 @@ export class OrderFlowCalculator {
     const t = tsLabel(ts)
 
     this.cvd += isBuy ? usd : -usd
-    this.cvdData.push({ t, cvd: this.cvd })
-    if (this.cvdData.length > MAX_CVD_POINTS) {
-      this.cvdData.shift()
-    }
+    this.cvdData.add({ t, cvd: this.cvd })
 
     this.pushAvgTradeValue(usd)
 
     const cutoff = ts - 60000
-    while (this.windowTrades.length && this.windowTrades[0].ts <= cutoff) {
-      const old = this.windowTrades.shift()!
-      if (old.isBuy) this.buyVol60 -= old.vol
-      else this.sellVol60 -= old.vol
-    }
-    this.windowTrades.push({ ts, isBuy, vol: usd })
+    this.purgeWindowTrades(cutoff)
+    this.addWindowTrade({ ts, isBuy, vol: usd })
     if (isBuy) this.buyVol60 += usd
     else this.sellVol60 += usd
-    if (this.windowTrades.length > MAX_WINDOW_TRADES) {
-      const old = this.windowTrades.shift()!
-      if (old.isBuy) this.buyVol60 -= old.vol
-      else this.sellVol60 -= old.vol
-    }
 
     const lpThreshold = this.getLargePrintThreshold()
     if (lpThreshold > 0 && usd >= lpThreshold) {
@@ -266,12 +276,7 @@ export class OrderFlowCalculator {
     const tot = bLiq + aLiq
     this.bookImb = tot > 0 ? (bLiq - aLiq) / tot : 0
 
-    this.pressureData.push({
-      t: tsLabel(Date.now()),
-      imbalance: this.bookImb * 100,
-    })
-    if (this.pressureData.length > MAX_PRESSURE_POINTS)
-      this.pressureData.shift()
+    this.pressureData.add({ t: tsLabel(Date.now()), imbalance: this.bookImb * 100 })
 
     const range = mid * (DEPTH_PCT / 100)
     this.bidDepth = 0
@@ -297,13 +302,13 @@ export class OrderFlowCalculator {
     const cvdThreshold = this.getDynamicCvdThreshold()
     const lpThreshold = this.getLargePrintThreshold()
 
-    const snapKey = `${this.cvd}|${tradeRatio}|${aggrRatio}|${this.bookImb}|${this.bidDepth}|${this.askDepth}|${this.cvdData.length}|${this.pressureData.length}|${this.vwapV}|${this.pendingDir}|${cvdThreshold}|${lpThreshold}`
+    const snapKey = `${this.cvd}|${tradeRatio}|${aggrRatio}|${this.bookImb}|${this.bidDepth}|${this.askDepth}|${this.cvdData.length()}|${this.pressureData.length()}|${this.vwapV}|${this.pendingDir}|${cvdThreshold}|${lpThreshold}`
     if (snapKey === this.lastSentSnap) return null
     this.lastSentSnap = snapKey
 
     return {
       cvd: this.cvd,
-      cvdData: this.cvdData,
+      cvdData: this.cvdData.toArray(),
       buyVol60: this.buyVol60,
       sellVol60: this.sellVol60,
       tradeRatio,
@@ -316,7 +321,7 @@ export class OrderFlowCalculator {
       bookImb: this.bookImb,
       bidDepth: this.bidDepth,
       askDepth: this.askDepth,
-      pressureData: this.pressureData,
+      pressureData: this.pressureData.toArray(),
       pendingDir: this.pendingDir,
       lastAlert: this.lastAlertTs,
       cvdThreshold,
