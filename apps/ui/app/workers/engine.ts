@@ -4,7 +4,7 @@ import { RingBuffer } from './RingBuffer'
 import { DraftManager, INTERVAL_MS } from './Draft'
 import { OrderFlowCalculator } from './OrderFlowCalculator'
 
-const MAX_BUFFER = 2000
+const MAX_BUFFER = 500
 
 let socket: WebSocket | null = null
 let pingInterval: ReturnType<typeof setInterval> | null = null

@@ -23,6 +23,14 @@ export type Bias = 'bullish' | 'bearish' | null
 export type SwingType = 'High' | 'Low' | null
 export type Swing = 'HH' | 'HL' | 'LH' | 'LL' | null
 
+export interface FootprintLevel {
+  price: number
+  buyVol: number
+  sellVol: number
+  delta: number
+  total: number
+}
+
 export interface CandleUI extends Trade {
   ema20: number
   ema50: number
@@ -36,6 +44,7 @@ export interface CandleUI extends Trade {
   bias?: Bias
   bos?: Bias
   choch?: Bias
+  footprint?: FootprintLevel[]
 }
 
 export type Interval = (typeof intervals)[number]
