@@ -16,7 +16,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8",
-    "eslint": "^10",
+    "eslint": "^9",
     "eslint-config-next": "16",
     "eslint-config-prettier": "^10",
     "prettier": "^3",

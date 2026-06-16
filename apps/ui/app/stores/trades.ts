@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { AggressiveTrade } from '../types'
 
-const MAX_TRADES = 500
+const MAX_TRADES = 200
 
 interface TradesState {
   trades: AggressiveTrade[]
@@ -12,10 +12,12 @@ export const useTradesStore = create<TradesState>((set) => ({
   trades: [],
   addTrades: (incoming) =>
     set((state) => {
-      const merged = [...state.trades, ...incoming]
-      if (merged.length > MAX_TRADES) {
-        return { trades: merged.slice(-MAX_TRADES) }
+      if (!incoming.length) return state
+      const merged = state.trades.length + incoming.length
+      if (merged > MAX_TRADES) {
+        const slice = state.trades.slice(incoming.length)
+        return { trades: [...slice, ...incoming] }
       }
-      return { trades: merged }
+      return { trades: [...state.trades, ...incoming] }
     }),
 }))

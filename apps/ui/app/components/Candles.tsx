@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { CandleUI, AggressiveTrade } from '../types'
 import * as d3 from 'd3'
 import { useOrderBookStore } from '../stores/orderbook'
@@ -123,12 +123,6 @@ export const Candles = ({
       maxRef: bar.side === 'bid' ? maxBidVol : maxAskVol,
     }))
   }, [y, bids, asks, currentPrice, tickCount])
-
-  const [hoveredTrade, setHoveredTrade] = useState<{
-    trade: AggressiveTrade
-    cx: number
-    cy: number
-  } | null>(null)
 
   const allTrades = useTradesStore((s) => s.trades)
 
@@ -416,64 +410,7 @@ export const Candles = ({
               />
             ))}
 
-          {/* Aggressive Trades (bolas do bookmap) */}
-          {visibleTrades.map((t, i) => {
-            const ts = t.time < 1e12 ? t.time * 1000 : t.time
-            const cx = x(new Date(ts))
-            if (cx < 0 || cx > innerWidth) return null
-            const cy = y(t.price)
-            return (
-              <circle
-                key={i}
-                cx={cx}
-                cy={cy}
-                r={Math.max(1.5, Math.min(8, Math.sqrt(Math.abs(t.size)) * 2.5))}
-                fill={t.side === 'B' ? '#22c55e' : '#ef4444'}
-                opacity={0.7}
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={() => setHoveredTrade({ trade: t, cx, cy })}
-                onMouseLeave={() => setHoveredTrade(null)}
-              />
-            )
-          })}
 
-          {/* Tooltip das ordens agressivas */}
-          {hoveredTrade && (
-            <foreignObject
-              x={hoveredTrade.cx + 8}
-              y={hoveredTrade.cy - 50}
-              width={130}
-              height={55}
-              style={{ overflow: 'visible', pointerEvents: 'none' }}
-            >
-              <div className="bg-slate-950/90 backdrop-blur-md border border-slate-700 px-2.5 py-1.5 rounded shadow-2xl text-[10px]">
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-400">Price</span>
-                  <span className="text-white font-bold tabular-nums">
-                    {hoveredTrade.trade.price}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-400">Size</span>
-                  <span className="text-white font-bold tabular-nums">
-                    {hoveredTrade.trade.size.toFixed(4)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-400">Side</span>
-                  <span
-                    className={
-                      hoveredTrade.trade.side === 'B'
-                        ? 'text-emerald-400 font-bold'
-                        : 'text-rose-400 font-bold'
-                    }
-                  >
-                    {hoveredTrade.trade.side === 'B' ? 'BUY' : 'SELL'}
-                  </span>
-                </div>
-              </div>
-            </foreignObject>
-          )}
 
           {/* Cursor Vertical (Crosshair) */}
           {hoverX !== undefined && (

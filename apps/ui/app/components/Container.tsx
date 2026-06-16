@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useWorker } from '../hooks/useWorker'
 import { Chart } from './Chart'
+import { Dashboard } from './Dashboard'
 import { intervals } from '../constants'
 import type { Interval } from '../types'
 
@@ -12,7 +12,6 @@ interface Props {
 
 export const Container = ({ coin }: Props) => {
   const [interval, setInterval] = useState<Interval>('5m')
-  useWorker(coin, interval)
 
   return (
     <section className="relative h-screen bg-slate-950 text-slate-200 flex flex-col overflow-hidden">
@@ -44,9 +43,14 @@ export const Container = ({ coin }: Props) => {
         </div>
       </header>
 
-      {/* Gráfico */}
-      <main className="flex-1 p-3 min-h-0">
-        <Chart interval={interval} />
+      {/* Split View: Chart (left) + Dashboard (right) */}
+      <main className="flex-1 min-h-0 flex">
+        <div className="w-1/2 p-3 min-h-0 overflow-hidden">
+          <Chart interval={interval} />
+        </div>
+        <div className="w-1/2 border-l border-slate-800 min-h-0 overflow-hidden">
+          <Dashboard coin={coin} interval={interval} />
+        </div>
       </main>
     </section>
   )

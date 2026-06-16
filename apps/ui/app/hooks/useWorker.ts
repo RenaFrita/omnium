@@ -6,13 +6,19 @@ import { intervals } from '../constants'
 import { useChartStore } from '../stores/chart'
 import { useOrderBookStore } from '../stores/orderbook'
 import { useTradesStore } from '../stores/trades'
+import { useOrderFlowStore } from '../stores/orderflow'
 
-export const useWorker = (coin: string, interval: Interval) => {
+export const useWorker = (
+  coin: string,
+  interval: Interval,
+  onAlert?: (alert: { dir: string; cvd: number; bookImb: number; tradeRatio: number; aggrRatio: number; coin: string; ts: number }) => void
+) => {
   const workerRef = useRef<Worker | null>(null)
   const setCandles = useChartStore((state) => state.setCandles)
   const addCandle = useChartStore((state) => state.addCandle)
   const applyUpdate = useOrderBookStore((state) => state.applyUpdate)
   const addTrades = useTradesStore((state) => state.addTrades)
+  const setSnapshot = useOrderFlowStore((state) => state.setSnapshot)
 
   useEffect(() => {
     const worker = new Worker(
@@ -42,21 +48,34 @@ export const useWorker = (coin: string, interval: Interval) => {
         case 'AGGRESSIVE_TRADES':
           addTrades(trades)
           break
+        case 'ORDER_FLOW_SNAP': {
+          const { type: t, ...snap } = e.data
+          void t
+          setSnapshot(snap)
+          break
+        }
+        case 'ALERT':
+          onAlert?.(e.data)
+          break
       }
     }
 
     return () => {
       worker.terminate()
     }
-  }, [coin, addCandle, setCandles, applyUpdate, addTrades])
+  }, [coin, onAlert, addCandle, setCandles, applyUpdate, addTrades, setSnapshot])
 
   useEffect(() => {
     workerRef.current?.postMessage({ type: 'FETCH_HISTORY', interval })
   }, [interval])
 
-  const requestHistory = (i: Interval) => {
-    workerRef.current?.postMessage({ type: 'GET_HISTORY', interval: i })
+  const sendToWorker = (msg: Record<string, unknown>) => {
+    workerRef.current?.postMessage(msg)
   }
 
-  return { requestHistory }
+  const requestHistory = (i: Interval) => {
+    sendToWorker({ type: 'GET_HISTORY', interval: i })
+  }
+
+  return { requestHistory, sendToWorker }
 }

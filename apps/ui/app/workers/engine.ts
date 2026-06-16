@@ -2,14 +2,17 @@
 import { WsTrade, WsBook, WsLevel, Trade, Interval } from '../types'
 import { RingBuffer } from './RingBuffer'
 import { DraftManager, INTERVAL_MS } from './Draft'
+import { OrderFlowCalculator } from './OrderFlowCalculator'
 
-const MAX_BUFFER = 1000000
+const MAX_BUFFER = 2000
 
 let socket: WebSocket | null = null
 let pingInterval: ReturnType<typeof setInterval> | null = null
+let orderFlowInterval: ReturnType<typeof setInterval> | null = null
 const buffers = new Map<string, RingBuffer>()
 let draftManager: DraftManager
 let currentCoin = ''
+const orderFlow = new OrderFlowCalculator()
 
 async function fetchHistory(interval: string) {
   const buffer = buffers.get(interval)
@@ -55,9 +58,12 @@ self.onmessage = async (e: MessageEvent) => {
     case 'FETCH_HISTORY':
       await fetchHistory(interval)
       break
-    case 'GET_HISTORY':
+      case 'GET_HISTORY':
       const history = buffers.get(interval)?.getHistory() || []
       self.postMessage({ type: 'HISTORY_DATA', interval, history })
+      break
+    case 'SET_LARGE_PRINT_MULTIPLIER':
+      orderFlow.setLargePrintMultiplier(e.data.value)
       break
   }
 }
@@ -65,7 +71,13 @@ self.onmessage = async (e: MessageEvent) => {
 function connect(coin: string, intervals: string[]) {
   if (socket) socket.close()
   if (pingInterval) clearInterval(pingInterval)
+  if (orderFlowInterval) clearInterval(orderFlowInterval)
   currentCoin = coin
+  orderFlow.reset()
+  orderFlow.setCoin(coin)
+  orderFlow.setOnAlert((alert) => {
+    self.postMessage({ type: 'ALERT', ...alert, coin, ts: Date.now() })
+  })
 
   intervals.forEach((i) => {
     if (!buffers.has(i)) buffers.set(i, new RingBuffer(MAX_BUFFER))
@@ -96,6 +108,11 @@ function connect(coin: string, intervals: string[]) {
         socket.send(JSON.stringify({ method: 'ping' }))
       }
     }, 30000)
+
+    orderFlowInterval = setInterval(() => {
+      const snap = orderFlow.getSnapshot()
+      if (snap) self.postMessage({ type: 'ORDER_FLOW_SNAP', ...snap })
+    }, 500)
   }
 
   socket.onmessage = (event) => {
@@ -107,6 +124,7 @@ function connect(coin: string, intervals: string[]) {
         draftManager.processTrade(wsTrade, (candle, interval) => {
           self.postMessage({ type: 'CANDLE_UPDATE', candle, interval })
         })
+        orderFlow.processTrade(wsTrade)
         aggressiveTrades.push({
           price: +wsTrade.px,
           size: +wsTrade.sz,
@@ -125,12 +143,14 @@ function connect(coin: string, intervals: string[]) {
       })
       const bids = book.levels[0].map(mapLevel)
       const asks = book.levels[1].map(mapLevel)
+      orderFlow.processBook(book)
       self.postMessage({ type: 'ORDER_BOOK', bids, asks })
     }
   }
 
   socket.onclose = () => {
     if (pingInterval) clearInterval(pingInterval)
+    if (orderFlowInterval) clearInterval(orderFlowInterval)
     setTimeout(() => connect(coin, intervals), 5000)
   }
 
