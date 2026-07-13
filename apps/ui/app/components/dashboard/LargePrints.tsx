@@ -8,7 +8,7 @@ interface Props {
   sendToWorker: (msg: Record<string, unknown>) => void
 }
 
-export const LargePrints = ({ sendToWorker }: Props) => {
+export const LargePrints = ({ sendToWorker }: Readonly<Props>) => {
   const largePrints = useOrderFlowStore((s) => s.largePrints)
   const lpThreshold = useOrderFlowStore((s) => s.largePrintThreshold)
   const [multiplier, setMultiplier] = useState(5)
@@ -34,7 +34,7 @@ export const LargePrints = ({ sendToWorker }: Props) => {
         </div>
       </div>
       {largePrints.length === 0 ? (
-        <div className="text-slate-700 text-[11px] font-mono">Aguardando...</div>
+        <div className="text-slate-700 text-[11px] font-mono">Waiting...</div>
       ) : (
         largePrints.map((p, i) => (
           <div

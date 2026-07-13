@@ -7,7 +7,7 @@ interface Props {
   markets: { name: string }[]
 }
 
-export default function MarketTypeahead({ markets }: Props) {
+export default function MarketTypeahead({ markets }: Readonly<Props>) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(0)
@@ -47,10 +47,8 @@ export default function MarketTypeahead({ markets }: Props) {
     if (e.key === 'Enter') handleSelect(filtered[highlightIndex])
   }
 
-  console.log(markets)
   return (
     <div className="relative w-full max-w-sm">
-      {/* Input */}
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-teal-500 text-sm select-none">
           /
@@ -58,7 +56,7 @@ export default function MarketTypeahead({ markets }: Props) {
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search market…"
+          placeholder="Search market\u2026"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value)
@@ -76,7 +74,6 @@ export default function MarketTypeahead({ markets }: Props) {
         />
       </div>
 
-      {/* Dropdown */}
       {isOpen && filtered.length > 0 && (
         <ul className="absolute z-10 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl">
           {filtered.map((market, index) => (
@@ -100,7 +97,6 @@ export default function MarketTypeahead({ markets }: Props) {
         </ul>
       )}
 
-      {/* Empty state */}
       {isOpen && query && filtered.length === 0 && (
         <div className="absolute mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 font-mono text-sm text-zinc-600">
           No markets found for &ldquo;{query}&rdquo;

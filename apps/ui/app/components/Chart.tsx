@@ -1,19 +1,19 @@
 'use client'
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
+import * as d3 from 'd3'
+import { Activity, BarChart3, TrendingUp, Volume2, VolumeX } from 'lucide-react'
 import { useChartDimensions } from '../hooks/useChartDimensions'
 import { useChartStore } from '../stores/chart'
 import { CandleUI, Interval } from '../types'
 import { Rsi } from './Rsi'
 import { Volume } from './Volume'
 import { Candles } from './Candles'
-import * as d3 from 'd3'
-import { Activity, BarChart3, TrendingUp, Volume2, VolumeX } from 'lucide-react'
 
 interface Props {
   interval: Interval
 }
 
-export const Chart = ({ interval }: Props) => {
+export const Chart = ({ interval }: Readonly<Props>) => {
   const [hoverData, setHoverData] = useState<{
     candle: CandleUI
     x: number
@@ -50,7 +50,7 @@ export const Chart = ({ interval }: Props) => {
     if (hasSignal && lastSignalRef.current !== lastCandle.t) {
       audioRef.current
         ?.play()
-        .catch((e) => console.log('Erro ao tocar áudio:', e))
+        .catch((e) => console.log('Error playing audio:', e))
       lastSignalRef.current = lastCandle.t
     }
   }, [candles, isAudioEnabled])
@@ -107,7 +107,6 @@ export const Chart = ({ interval }: Props) => {
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setHoverData(null)}
     >
-      {/* Crosshair vertical */}
       {hoverData && (
         <div
           className="absolute top-0 bottom-0 w-[1px] bg-slate-500/30 pointer-events-none z-10"
@@ -115,7 +114,6 @@ export const Chart = ({ interval }: Props) => {
         />
       )}
 
-      {/* Área Gráfica */}
       <div
         ref={containerRef}
         className="flex flex-col flex-1 w-full min-h-0 relative"
@@ -159,13 +157,12 @@ export const Chart = ({ interval }: Props) => {
         )}
       </div>
 
-      {/* Toolbar Inferior */}
       <div className="bg-slate-950/80 border-t border-slate-800 p-1.5 flex items-center justify-between gap-4 z-20 shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsAudioEnabled(!isAudioEnabled)}
             className={`p-1.5 rounded transition-colors ${isAudioEnabled ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600'}`}
-            title={isAudioEnabled ? 'Alertas Ativos' : 'Alertas Mudos'}
+            title={isAudioEnabled ? 'Alerts Active' : 'Alerts Muted'}
           >
             {isAudioEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
           </button>

@@ -48,12 +48,9 @@ export const useWorker = (
         case 'AGGRESSIVE_TRADES':
           addTrades(trades)
           break
-        case 'ORDER_FLOW_SNAP': {
-          const { type: t, ...snap } = e.data
-          void t
-          setSnapshot(snap)
+        case 'ORDER_FLOW_SNAP':
+          setSnapshot(e.data)
           break
-        }
         case 'ALERT':
           onAlert?.(e.data)
           break

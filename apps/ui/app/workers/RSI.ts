@@ -21,7 +21,6 @@ export class RSI {
     const gain = change > 0 ? change : 0
     const loss = change < 0 ? -change : 0
 
-    // Wilder's Smoothing Method
     let currentAvgGain: number
     let currentAvgLoss: number
 

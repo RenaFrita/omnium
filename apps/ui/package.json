@@ -14,7 +14,6 @@
     "next": "^16",
     "react": "^19",
     "react-dom": "^19",
-    "recharts": "^3",
     "zustand": "^5"
   }
 }

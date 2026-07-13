@@ -216,7 +216,8 @@ export class OrderFlowCalculator {
     const size = +trade.sz
     const isBuy = trade.side === 'B'
     const usd = price * size
-    const ts = trade.time || Date.now()
+    let ts = trade.time || Date.now()
+    if (ts < 1e12) ts *= 1000
     const t = tsLabel(ts)
 
     this.cvd += isBuy ? usd : -usd

@@ -1,6 +1,7 @@
+'use client'
 import { useMemo } from 'react'
-import { CandleUI } from '../types'
 import * as d3 from 'd3'
+import { CandleUI } from '../types'
 
 interface Props {
   width: number
@@ -9,8 +10,7 @@ interface Props {
   hoverX?: number
 }
 
-export const Rsi = ({ width, height, candles, hoverX }: Props) => {
-  // 1. Aumentamos o bottom para 35 para caber o texto do eixo X
+export const Rsi = ({ width, height, candles, hoverX }: Readonly<Props>) => {
   const margin = useMemo(
     () => ({ top: 10, right: 150, bottom: 35, left: 10 }),
     []
@@ -41,7 +41,6 @@ export const Rsi = ({ width, height, candles, hoverX }: Props) => {
       .y((d) => yScale(d.rsi as number))
       .curve(d3.curveMonotoneX)
 
-    // Gerar aproximadamente 5 a 8 etiquetas de tempo dependendo da largura
     const ticks = xScale.ticks(Math.max(2, Math.floor(innerWidth / 90)))
 
     return {
@@ -58,19 +57,16 @@ export const Rsi = ({ width, height, candles, hoverX }: Props) => {
     <div style={{ width: '100%', height: '100%', contain: 'strict' }}>
       <svg width={width} height={height} style={{ display: 'block' }}>
         <g transform={`translate(${margin.left},${margin.top})`}>
-          {/* Linhas de Referência RSI */}
           <line x1={0} x2={innerWidth} y1={y(70)} y2={y(70)} stroke="#333" strokeDasharray="4,4" />
           <line x1={0} x2={innerWidth} y1={y(30)} y2={y(30)} stroke="#333" strokeDasharray="4,4" />
           <line x1={0} x2={innerWidth} y1={y(50)} y2={y(50)} stroke="#222" strokeOpacity="0.5" />
 
-          {/* Eixo Y (Níveis RSI) */}
           <g fontSize="10" fill="#64748b" textAnchor="start">
             {[30, 50, 70].map((tick) => (
               <text key={tick} x={innerWidth + 8} y={y(tick) + 4}>{tick}</text>
             ))}
           </g>
 
-          {/* EIXO X (TEMPO) */}
           <g transform={`translate(0, ${innerHeight + 20})`}>
             {timeTicks.map((tick, i) => (
               <text
@@ -85,7 +81,6 @@ export const Rsi = ({ width, height, candles, hoverX }: Props) => {
             ))}
           </g>
 
-          {/* Linha RSI */}
           {pathData && (
             <path
               d={pathData}
@@ -97,7 +92,6 @@ export const Rsi = ({ width, height, candles, hoverX }: Props) => {
             />
           )}
 
-          {/* Crosshair Vertical - Estendido para o eixo do tempo */}
           {hoverX !== undefined && (
             <line
               x1={hoverX}

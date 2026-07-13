@@ -1,5 +1,5 @@
-import MarketTypeahead from './components/MarketTypeahead'
 import { PerpMeta } from './types'
+import MarketTypeahead from './components/MarketTypeahead'
 
 export default async function Home() {
   const res = await fetch('https://api.hyperliquid.xyz/info', {

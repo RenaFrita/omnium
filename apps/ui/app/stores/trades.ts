@@ -15,8 +15,8 @@ export const useTradesStore = create<TradesState>((set) => ({
       if (!incoming.length) return state
       const merged = state.trades.length + incoming.length
       if (merged > MAX_TRADES) {
-        const slice = state.trades.slice(incoming.length)
-        return { trades: [...slice, ...incoming] }
+        const overflow = merged - MAX_TRADES
+        return { trades: [...state.trades.slice(overflow), ...incoming] }
       }
       return { trades: [...state.trades, ...incoming] }
     }),

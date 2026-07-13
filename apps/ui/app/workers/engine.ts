@@ -1,4 +1,3 @@
-// trade-data-worker.ts
 import { WsTrade, WsBook, WsLevel, Trade, Interval } from '../types'
 import { RingBuffer } from './RingBuffer'
 import { DraftManager, INTERVAL_MS } from './Draft'
@@ -58,7 +57,7 @@ self.onmessage = async (e: MessageEvent) => {
     case 'FETCH_HISTORY':
       await fetchHistory(interval)
       break
-      case 'GET_HISTORY':
+    case 'GET_HISTORY':
       const history = buffers.get(interval)?.getHistory() || []
       self.postMessage({ type: 'HISTORY_DATA', interval, history })
       break
@@ -119,7 +118,12 @@ function connect(coin: string, intervals: string[]) {
     const msg = JSON.parse(event.data)
     if (msg.channel === 'trades' && Array.isArray(msg.data)) {
       const trades: WsTrade[] = msg.data
-      const aggressiveTrades: { price: number; size: number; side: string; time: number }[] = []
+      const aggressiveTrades: {
+        price: number
+        size: number
+        side: string
+        time: number
+      }[] = []
       for (const wsTrade of trades) {
         draftManager.processTrade(wsTrade, (candle, interval) => {
           self.postMessage({ type: 'CANDLE_UPDATE', candle, interval })

@@ -11,9 +11,6 @@ export class RingBuffer {
     this.buffer = new Array(size)
   }
 
-  /**
-   * Adiciona ou atualiza uma vela e processa indicadores e estrutura de mercado.
-   */
   add(trade: Trade): CandleUI {
     const c = +trade.c
     const v = +trade.v
@@ -24,10 +21,8 @@ export class RingBuffer {
     const prevIdx = (this.pointer - 1 + this.size) % this.size
     const lastTrade = this.buffer[prevIdx]
 
-    // Verifica se é um update da mesma vela (ex: WebSocket tick)
     const isUpdate = lastTrade && lastTrade.t === trade.t
 
-    // A base para cálculos (EMA/RSI) deve ser a vela anterior real
     const baseIdx = isUpdate
       ? (this.pointer - 2 + this.size) % this.size
       : prevIdx
@@ -43,7 +38,6 @@ export class RingBuffer {
     const volSMA = this.getFastVolumeSMA(20, isUpdate ? 1 : 0)
     const isVolumeSpike = volSMA ? v > volSMA * 2.0 : false
 
-    // Nova vela herda o bias da anterior para continuidade da tendência
     const newTrade: CandleUI = {
       ...trade,
       o,
@@ -77,21 +71,14 @@ export class RingBuffer {
       if (this.pointer === 0) this.isFull = true
     }
 
-    // 1. Detectar Fractais/Pivots (2 velas atrás para confirmação)
     const fractalIdx = (currentIndex - 2 + this.size) % this.size
     this.detectFractal(fractalIdx)
 
-    // 2. Detectar Quebras de Estrutura na vela atual
     this.detectStructure(currentIndex)
 
-    // Retorna a referência do buffer para garantir que as mutações sejam enviadas ao UI
     return this.buffer[currentIndex]!
   }
 
-  /**
-   * Calcula indicadores para um draft sem guardar no buffer.
-   * Usado para candles em construção (não fechadas).
-   */
   addDraft(trade: Trade): CandleUI {
     const c = +trade.c
     const v = +trade.v
@@ -184,7 +171,6 @@ export class RingBuffer {
     const prevCandle = this.get(index - 1)
     if (!candle || !prevCandle) return
 
-    // O bias da vela atual deve vir SEMPRE da vela anterior para comparação honesta
     const currentTrend =
       prevCandle.bias ??
       (candle.c > (candle.ema200 ?? candle.c) ? 'bullish' : 'bearish')
@@ -200,7 +186,6 @@ export class RingBuffer {
     const isBreakoutBear = candle.c < lastLow && prevCandle.c >= lastLow
 
     if (isBreakoutBull) {
-      // Se o preço rompe o topo e estávamos em queda -> Reversão (Caveira)
       if (currentTrend === 'bearish') {
         candle.choch = 'bullish'
         candle.bias = 'bullish'
@@ -208,7 +193,6 @@ export class RingBuffer {
         candle.bos = 'bullish'
       }
     } else if (isBreakoutBear) {
-      // Se o preço rompe o fundo e estávamos em alta -> Reversão (Caveira)
       if (currentTrend === 'bullish') {
         candle.choch = 'bearish'
         candle.bias = 'bearish'
@@ -222,7 +206,6 @@ export class RingBuffer {
     const highs: number[] = []
     const lows: number[] = []
 
-    // Começamos a busca a partir da vela anterior ao index fornecido
     for (let i = 1; i < this.size; i++) {
       const idx = (index - i + this.size) % this.size
       const c = this.buffer[idx]
