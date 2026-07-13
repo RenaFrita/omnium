@@ -12,7 +12,7 @@ interface Props {
 
 export const Volume = ({ width, height, candles, hoverX }: Readonly<Props>) => {
   const margin = useMemo(
-    () => ({ top: 5, right: 150, bottom: 20, left: 10 }),
+    () => ({ top: 5, right: 70, bottom: 20, left: 10 }),
     []
   )
 

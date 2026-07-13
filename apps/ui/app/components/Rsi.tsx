@@ -12,7 +12,7 @@ interface Props {
 
 export const Rsi = ({ width, height, candles, hoverX }: Readonly<Props>) => {
   const margin = useMemo(
-    () => ({ top: 10, right: 150, bottom: 35, left: 10 }),
+    () => ({ top: 10, right: 70, bottom: 35, left: 10 }),
     []
   )
   const innerWidth = Math.max(0, width - margin.left - margin.right)
