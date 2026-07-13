@@ -64,23 +64,25 @@ export const Candles = ({
 
     const cWidth = Math.max(2, (innerWidth / candles.length) * 0.7)
 
-    const paths = emaConfigs.map((config) => {
-      const lineGen = d3
-        .line<CandleUI>()
-        .defined((d) => d[config.key] !== undefined && d[config.key] !== null)
-        .x((d) => xScale(new Date(d.t)))
-        .y((d) => yScale(d[config.key]!))
-        .curve(d3.curveMonotoneX)
+    const paths = emaConfigs
+      .filter((config) => indicators[config.key])
+      .map((config) => {
+        const lineGen = d3
+          .line<CandleUI>()
+          .defined((d) => d[config.key] !== undefined && d[config.key] !== null)
+          .x((d) => xScale(new Date(d.t)))
+          .y((d) => yScale(d[config.key]!))
+          .curve(d3.curveMonotoneX)
 
-      return {
-        path: lineGen(candles),
-        color: config.color,
-        key: config.key,
-      }
-    })
+        return {
+          path: lineGen(candles),
+          color: config.color,
+          key: config.key,
+        }
+      })
 
     return { x: xScale, y: yScale, candleWidth: cWidth, emaPaths: paths }
-  }, [candles, innerWidth, innerHeight])
+  }, [candles, innerWidth, innerHeight, indicators])
 
   const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null
   const currentPrice = lastCandle ? lastCandle.c : 0
