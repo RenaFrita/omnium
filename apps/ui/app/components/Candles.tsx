@@ -142,6 +142,20 @@ export const Candles = ({
             ))}
           </g>
 
+          {emaPaths.map(
+            ({ path, color, key }) =>
+              path && (
+                <path
+                  key={key}
+                  d={path}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={1.5}
+                  opacity={0.8}
+                />
+              )
+          )}
+
           {currentPrice > 0 && y(currentPrice) > 0 && y(currentPrice) < innerHeight && (
             <g>
               <line
