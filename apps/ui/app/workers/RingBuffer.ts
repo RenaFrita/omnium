@@ -63,6 +63,13 @@ export class RingBuffer {
 
     if (isUpdate) {
       currentIndex = prevIdx
+      const existing = this.buffer[prevIdx]
+      if (existing) {
+        newTrade.o = existing.o
+        newTrade.h = Math.max(existing.h, newTrade.h)
+        newTrade.l = Math.min(existing.l, newTrade.l)
+        newTrade.v = existing.v + newTrade.v
+      }
       this.buffer[prevIdx] = newTrade
     } else {
       currentIndex = this.pointer
@@ -82,11 +89,19 @@ export class RingBuffer {
   addDraft(trade: Trade): CandleUI {
     const c = +trade.c
     const v = +trade.v
+    const o = +trade.o
+    const h = +trade.h
+    const l = +trade.l
 
     const prevIdx = (this.pointer - 1 + this.size) % this.size
     const lastCandle = this.buffer[prevIdx]
 
     const isNewCandle = !lastCandle || lastCandle.t !== trade.t
+
+    const mergedO = isNewCandle || !lastCandle ? o : lastCandle.o
+    const mergedH = isNewCandle || !lastCandle ? h : Math.max(lastCandle.h, h)
+    const mergedL = isNewCandle || !lastCandle ? l : Math.min(lastCandle.l, l)
+    const mergedV = isNewCandle || !lastCandle ? v : lastCandle.v + v
 
     const base = isNewCandle
       ? lastCandle
@@ -104,6 +119,10 @@ export class RingBuffer {
 
     return {
       ...trade,
+      o: mergedO,
+      h: mergedH,
+      l: mergedL,
+      v: mergedV,
       ema20,
       ema50,
       ema100,
