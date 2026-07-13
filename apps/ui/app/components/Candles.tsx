@@ -2,7 +2,6 @@
 import { useMemo } from 'react'
 import * as d3 from 'd3'
 import { CandleUI, AggressiveTrade } from '../types'
-import { useOrderBookStore } from '../stores/orderbook'
 import { useTradesStore } from '../stores/trades'
 
 interface Props {
@@ -33,7 +32,7 @@ export const Candles = ({
   indicators,
 }: Readonly<Props>) => {
   const margin = useMemo(
-    () => ({ top: 20, right: 150, bottom: 20, left: 10 }),
+    () => ({ top: 20, right: 70, bottom: 20, left: 10 }),
     []
   )
 
@@ -83,78 +82,13 @@ export const Candles = ({
     return { x: xScale, y: yScale, candleWidth: cWidth, emaPaths: paths }
   }, [candles, innerWidth, innerHeight])
 
-  const bids = useOrderBookStore((s) => s.bids)
-  const asks = useOrderBookStore((s) => s.asks)
-
   const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null
   const currentPrice = lastCandle ? lastCandle.c : 0
   const priceColor = lastCandle ? (lastCandle.c >= lastCandle.o ? '#22c55e' : '#ef4444') : '#ffffff'
 
   const tickCount = Math.max(8, Math.min(14, Math.floor(innerHeight / 45)))
 
-  const depthBars = useMemo(() => {
-    if (!y || !bids.length || !asks.length) return []
-
-    const ticks = y.ticks(tickCount)
-    const tickRange = ticks.length > 1 ? ticks[1] - ticks[0] : 0
-    const halfRange = tickRange / 2
-
-    const bars = ticks.map((tickPrice) => {
-      if (tickPrice <= currentPrice) {
-        const bidVol = bids
-          .filter((b) => Math.abs(b.price - tickPrice) <= halfRange)
-          .reduce((s, b) => s + b.size, 0)
-        return { y: y(tickPrice), vol: bidVol, side: 'bid' as const }
-      } else {
-        const askVol = asks
-          .filter((a) => Math.abs(a.price - tickPrice) <= halfRange)
-          .reduce((s, a) => s + a.size, 0)
-        return { y: y(tickPrice), vol: askVol, side: 'ask' as const }
-      }
-    })
-
-    const bidVols = bars.filter((b) => b.side === 'bid').map((b) => b.vol)
-    const askVols = bars.filter((b) => b.side === 'ask').map((b) => b.vol)
-    const maxBidVol = bidVols.length ? Math.max(...bidVols) : 1
-    const maxAskVol = askVols.length ? Math.max(...askVols) : 1
-
-    return bars.map((bar) => ({
-      ...bar,
-      maxRef: bar.side === 'bid' ? maxBidVol : maxAskVol,
-    }))
-  }, [y, bids, asks, currentPrice, tickCount])
-
   const allTrades = useTradesStore((s) => s.trades)
-
-  const volumeProfile = useMemo(() => {
-    if (!y || !allTrades.length || !candles.length) return []
-    const t0 = candles[0].t
-    const t1 = candles[candles.length - 1].t
-    const inRange = allTrades.filter((t) => {
-      const ts = t.time < 1e12 ? t.time * 1000 : t.time
-      return ts >= t0 && ts <= t1
-    })
-    if (!inRange.length) return []
-
-    const ticks = y.ticks(tickCount)
-    const tickRange = ticks.length > 1 ? ticks[1] - ticks[0] : 0
-    const halfRange = tickRange / 2
-
-    const bars = ticks.map((tickPrice) => {
-      let bidVol = 0
-      let askVol = 0
-      for (const t of inRange) {
-        if (Math.abs(t.price - tickPrice) <= halfRange) {
-          if (t.side === 'B') bidVol += t.size
-          else askVol += t.size
-        }
-      }
-      return { y: y(tickPrice), bidVol, askVol, vol: bidVol + askVol }
-    })
-
-    const maxVol = Math.max(1, ...bars.map((b) => b.vol))
-    return bars.map((bar) => ({ ...bar, maxRef: maxVol }))
-  }, [y, allTrades, candles, tickCount])
 
   const visibleTrades = useMemo(() => {
     if (!x || !candles.length) return []
@@ -241,81 +175,6 @@ export const Candles = ({
             </g>
           )}
 
-          {depthBars.map((bar) => {
-            if (bar.vol === 0) return null
-            const barX = innerWidth + 66
-            const maxW = 30
-            const w = (bar.vol / bar.maxRef) * maxW
-            const isBid = bar.side === 'bid'
-            const fmt = d3.format('.2s')
-            return (
-              <g key={bar.y}>
-                <rect
-                  x={barX}
-                  y={bar.y - 7}
-                  width={Math.max(w, 1)}
-                  height={14}
-                  fill={isBid ? '#22c55e' : '#ef4444'}
-                  opacity={0.3}
-                  shapeRendering="crispEdges"
-                />
-                <text
-                  x={barX + 2}
-                  y={bar.y + 4}
-                  fontSize="9"
-                  fill={isBid ? '#bbf7d0' : '#fecaca'}
-                  textAnchor="start"
-                >
-                  {fmt(bar.vol)}
-                </text>
-              </g>
-            )
-          })}
-
-          {volumeProfile.map((bar) => {
-            if (bar.vol === 0) return null
-            const barX = innerWidth + 100
-            const maxW = 50
-            const totalW = (bar.vol / bar.maxRef) * maxW
-            const dominantSide = bar.bidVol >= bar.askVol ? 'B' : 'A'
-            const minorVol = Math.min(bar.bidVol, bar.askVol)
-            const minorW = (minorVol / bar.maxRef) * maxW
-            const fmt = d3.format('.2s')
-            return (
-              <g key={bar.y}>
-                <rect
-                  x={barX}
-                  y={bar.y - 7}
-                  width={Math.max(totalW, 1)}
-                  height={14}
-                  fill={dominantSide === 'B' ? '#22c55e' : '#ef4444'}
-                  opacity={0.3}
-                  shapeRendering="crispEdges"
-                />
-                {minorVol > 0 && (
-                  <rect
-                    x={barX}
-                    y={bar.y - 7}
-                    width={Math.max(minorW, 1)}
-                    height={14}
-                    fill={dominantSide === 'B' ? '#ef4444' : '#22c55e'}
-                    opacity={0.5}
-                    shapeRendering="crispEdges"
-                  />
-                )}
-                <text
-                  x={barX + 2}
-                  y={bar.y + 4}
-                  fontSize="9"
-                  fill="#e2e8f0"
-                  textAnchor="start"
-                >
-                  {fmt(bar.vol)}
-                </text>
-              </g>
-            )
-          })}
-
           {candles.map((d) => {
             const isBullish = d.c >= d.o
             const color = isBullish ? '#22c55e' : '#ef4444'
@@ -349,7 +208,7 @@ export const Candles = ({
                     fill={d.bos === 'bullish' ? '#22c55e' : '#ef4444'}
                     fontWeight="bold"
                   >
-                    BOS
+                    ⚡
                   </text>
                 )}
 
@@ -362,7 +221,7 @@ export const Candles = ({
                     fill={d.choch === 'bullish' ? '#22c55e' : '#ef4444'}
                     fontWeight="bold"
                   >
-                    CHoCH
+                    ☠️
                   </text>
                 )}
               </g>
@@ -380,22 +239,6 @@ export const Candles = ({
               strokeLinejoin="round"
             />
           )}
-
-          {emaPaths
-            .filter((ema) => indicators[ema.key])
-            .map((ema) => (
-              <path
-                key={ema.key}
-                d={ema.path || ''}
-                fill="none"
-                stroke={ema.color}
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                opacity={0.8}
-                style={{ transition: 'opacity 0.2s' }}
-              />
-            ))}
-
 
           {hoverX !== undefined && (
             <line
