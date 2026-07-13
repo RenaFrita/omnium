@@ -28,7 +28,7 @@ interface Props {
   interval: Interval
 }
 
-export const Dashboard = ({ coin, interval }: Props) => {
+export const Dashboard = ({ coin, interval }: Readonly<Props>) => {
   const [alertHistory, setAlertHistory] = useState<AlertData[]>([])
   const [activeAlert, setActiveAlert] = useState<AlertData | null>(null)
 

@@ -25,7 +25,7 @@ interface Props {
   alertHistory: AlertData[]
 }
 
-export const AlertSection = ({ activeAlert, setActiveAlert, alertHistory }: Props) => {
+export const AlertSection = ({ activeAlert, setActiveAlert, alertHistory }: Readonly<Props>) => {
   const cvd = useOrderFlowStore((s) => s.cvd)
   const bookImb = useOrderFlowStore((s) => s.bookImb)
   const tradeRatio = useOrderFlowStore((s) => s.tradeRatio)
@@ -50,7 +50,7 @@ export const AlertSection = ({ activeAlert, setActiveAlert, alertHistory }: Prop
       met: cvdThreshold > 0 ? (isLongMode ? cvd > cvdThreshold : cvd < -cvdThreshold) : false,
       desc: cvdThreshold > 0
         ? (isLongMode ? `> $${fmtK(cvdThreshold)}` : `< -$${fmtK(cvdThreshold)}`)
-        : 'aguardando...',
+        : 'waiting...',
     },
     {
       label: 'Book Imb',
@@ -86,7 +86,7 @@ export const AlertSection = ({ activeAlert, setActiveAlert, alertHistory }: Prop
               {activeAlert.dir === 'LONG' ? '\u25b2 LONG SETUP' : '\u25bc SHORT SETUP'} {'\u00b7'} {activeAlert.coin}
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
-                4/4 alinhadas {'\u00b7'} CVD ${fmtK(activeAlert.cvd)} {'\u00b7'} book {(activeAlert.bookImb * 100).toFixed(1)}%
+                4/4 aligned {'\u00b7'} CVD ${fmtK(activeAlert.cvd)} {'\u00b7'} book {(activeAlert.bookImb * 100).toFixed(1)}%
               </div>
           </div>
           <button onClick={() => setActiveAlert(null)} className="text-slate-500 hover:text-slate-300 text-base bg-transparent border-none cursor-pointer">
@@ -142,7 +142,7 @@ export const AlertSection = ({ activeAlert, setActiveAlert, alertHistory }: Prop
           </div>
           {inCooldown && (
             <div className="mt-1 text-[9px] text-slate-500">
-              proximo em {cooldownSec}s
+              next in {cooldownSec}s
               <div className="h-0.5 bg-slate-800 rounded mt-0.5">
                 <div
                   className="h-full bg-slate-600 rounded"
@@ -159,7 +159,7 @@ export const AlertSection = ({ activeAlert, setActiveAlert, alertHistory }: Prop
             <span className="text-slate-700">{alertHistory.length}</span>
           </div>
           {alertHistory.length === 0 ? (
-            <div className="text-slate-700 text-[10px] font-mono">Sem alertas...</div>
+            <div className="text-slate-700 text-[10px] font-mono">No alerts...</div>
           ) : (
             alertHistory.map((a, i) => (
               <div

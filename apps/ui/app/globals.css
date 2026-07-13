@@ -1,25 +1,19 @@
 @import 'tailwindcss';
 
-/* 1. Definição de Variáveis de Sistema */
 :root {
-  /* Tons neutros otimizados para redução de fadiga ocular */
   --background: #ffffff;
-  --foreground: #0f172a; /* Slate-900 para melhor contraste que o preto puro */
-
-  /* Cores de Trading (Acessibilidade) */
-  --success: #10b981; /* Emerald-500 */
-  --danger: #ef4444; /* Red-500 */
+  --foreground: #0f172a;
+  --success: #10b981;
+  --danger: #ef4444;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Fundo Slate-950 (estilo Hyperliquid/TradingView) */
     --background: #020617;
     --foreground: #f8fafc;
   }
 }
 
-/* 2. Extensão do Tema Tailwind v4 */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -30,10 +24,8 @@
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular;
 }
 
-/* 3. Resets e Otimizações de Layout */
 @layer base {
   html {
-    /* Garante scroll suave e evita saltos de layout com modais */
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
   }
@@ -43,14 +35,11 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     min-height: 100vh;
-    /* Melhora o rendering de fontes em Mac/iOS */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Impede scroll horizontal acidental em grids de gráficos */
     overflow-x: hidden;
   }
 
-  /* Scrollbar Customizada (Estilo Dark Terminal) */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -61,22 +50,20 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #334155; /* slate-700 */
+    background: #334155;
     border-radius: 10px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #475569; /* slate-600 */
+    background: #475569;
   }
 }
 
-/* 4. Utilitários para Trading */
 @layer utilities {
   .chart-container {
     @apply relative w-full h-full overflow-hidden rounded-lg border border-slate-800 bg-slate-900/50;
   }
 
-  /* Efeito de brilho sutil para CHoCH/BOS */
   .glow-success {
     filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
   }

@@ -56,13 +56,10 @@ export interface WsTrade {
   sz: string
   hash: string
   time: number
-  // tid is 50-bit hash of (buyer_oid, seller_oid).
-  // For a globally unique trade id, use (block_time, coin, tid)
   tid: number
-  users: [string, string] // [buyer, seller]
+  users: [string, string]
 }
 
-// Snapshot feed, pushed on each block that is at least 0.5 since last push
 export interface WsBook {
   coin: string
   levels: [Array<WsLevel>, Array<WsLevel>]
@@ -76,19 +73,19 @@ export interface WsBbo {
 }
 
 export interface WsLevel {
-  px: string // price
-  sz: string // size
-  n: number // number of orders
+  px: string
+  sz: string
+  n: number
 }
 
-export type OrderBookDelta = {
+export interface OrderBookDelta {
   ts: number
   side: 'bid' | 'ask'
   price: number
   size: number
 }
 
-export type AggressiveTrade = {
+export interface AggressiveTrade {
   price: number
   size: number
   side: 'B' | 'A'

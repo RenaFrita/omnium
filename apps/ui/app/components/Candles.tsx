@@ -1,7 +1,7 @@
 'use client'
 import { useMemo } from 'react'
-import { CandleUI, AggressiveTrade } from '../types'
 import * as d3 from 'd3'
+import { CandleUI, AggressiveTrade } from '../types'
 import { useOrderBookStore } from '../stores/orderbook'
 import { useTradesStore } from '../stores/trades'
 
@@ -19,10 +19,10 @@ interface Props {
 }
 
 const emaConfigs = [
-  { key: 'ema20' as const, color: '#3b82f6' }, // Blue
-  { key: 'ema50' as const, color: '#f59e0b' }, // Amber
-  { key: 'ema100' as const, color: '#ec4899' }, // Pink
-  { key: 'ema200' as const, color: '#94a3b8' }, // Slate
+  { key: 'ema20' as const, color: '#3b82f6' },
+  { key: 'ema50' as const, color: '#f59e0b' },
+  { key: 'ema100' as const, color: '#ec4899' },
+  { key: 'ema200' as const, color: '#94a3b8' },
 ]
 
 export const Candles = ({
@@ -31,7 +31,7 @@ export const Candles = ({
   height,
   hoverX,
   indicators,
-}: Props) => {
+}: Readonly<Props>) => {
   const margin = useMemo(
     () => ({ top: 20, right: 150, bottom: 20, left: 10 }),
     []
@@ -187,7 +187,6 @@ export const Candles = ({
     <div style={{ width: '100%', height: '100%', contain: 'strict' }}>
       <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
         <g transform={`translate(${margin.left},${margin.top})`}>
-          {/* Grelha de Fundo Horizontal */}
           <g opacity={0.05}>
             {y.ticks(tickCount).map((tick) => (
               <line
@@ -201,7 +200,6 @@ export const Candles = ({
             ))}
           </g>
 
-          {/* Eixo Y (lado direito) */}
           <g fontSize="10" fill="#64748b" textAnchor="start">
             {y.ticks(tickCount).map((tick) => (
               <text key={tick} x={innerWidth + 8} y={y(tick) + 4}>
@@ -210,7 +208,6 @@ export const Candles = ({
             ))}
           </g>
 
-          {/* Linha do Preço Atual (como TradingView) */}
           {currentPrice > 0 && y(currentPrice) > 0 && y(currentPrice) < innerHeight && (
             <g>
               <line
@@ -244,7 +241,6 @@ export const Candles = ({
             </g>
           )}
 
-          {/* Bookmap — profundidade do Order Book */}
           {depthBars.map((bar) => {
             if (bar.vol === 0) return null
             const barX = innerWidth + 66
@@ -276,7 +272,6 @@ export const Candles = ({
             )
           })}
 
-          {/* Volume Profile — volume de compra/venda por nível de preço */}
           {volumeProfile.map((bar) => {
             if (bar.vol === 0) return null
             const barX = innerWidth + 100
@@ -321,7 +316,6 @@ export const Candles = ({
             )
           })}
 
-          {/* Desenho das Velas e Sinais */}
           {candles.map((d) => {
             const isBullish = d.c >= d.o
             const color = isBullish ? '#22c55e' : '#ef4444'
@@ -346,7 +340,6 @@ export const Candles = ({
                   shapeRendering="crispEdges"
                 />
 
-                {/* BOS Sinais */}
                 {d.bos && (
                   <text
                     x={xPos}
@@ -354,15 +347,12 @@ export const Candles = ({
                     textAnchor="middle"
                     fontSize="12"
                     fill={d.bos === 'bullish' ? '#22c55e' : '#ef4444'}
+                    fontWeight="bold"
                   >
-                    ⚡{' '}
-                    <tspan x={xPos} dy="10" fontSize="7" fontWeight="bold">
-                      BOS
-                    </tspan>
+                    BOS
                   </text>
                 )}
 
-                {/* CHoCH Sinais */}
                 {d.choch && (
                   <text
                     x={xPos}
@@ -370,18 +360,15 @@ export const Candles = ({
                     textAnchor="middle"
                     fontSize="12"
                     fill={d.choch === 'bullish' ? '#22c55e' : '#ef4444'}
+                    fontWeight="bold"
                   >
-                    💀{' '}
-                    <tspan x={xPos} dy="10" fontSize="7" fontWeight="bold">
-                      CHoCH
-                    </tspan>
+                    CHoCH
                   </text>
                 )}
               </g>
             )
           })}
 
-          {/* Price Line (ligando as trades agressivas) */}
           {tradePriceLinePath && (
             <path
               d={tradePriceLinePath}
@@ -394,9 +381,8 @@ export const Candles = ({
             />
           )}
 
-          {/* Renderização Condicional das EMAs */}
           {emaPaths
-            .filter((ema) => indicators[ema.key]) // Aqui ligamos/desligamos
+            .filter((ema) => indicators[ema.key])
             .map((ema) => (
               <path
                 key={ema.key}
@@ -411,8 +397,6 @@ export const Candles = ({
             ))}
 
 
-
-          {/* Cursor Vertical (Crosshair) */}
           {hoverX !== undefined && (
             <line
               x1={hoverX}

@@ -10,12 +10,11 @@ interface Props {
   coin: string
 }
 
-export const Container = ({ coin }: Props) => {
+export const Container = ({ coin }: Readonly<Props>) => {
   const [interval, setInterval] = useState<Interval>('5m')
 
   return (
     <section className="relative h-screen bg-slate-950 text-slate-200 flex flex-col overflow-hidden">
-      {/* Barra Superior */}
       <header className="bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="font-bold text-sm tracking-wider">{coin.toUpperCase()}</span>
@@ -25,7 +24,6 @@ export const Container = ({ coin }: Props) => {
           </div>
         </div>
 
-        {/* Selector de Timeframe */}
         <div className="flex gap-1">
           {intervals.map((int) => (
             <button
@@ -43,7 +41,6 @@ export const Container = ({ coin }: Props) => {
         </div>
       </header>
 
-      {/* Split View: Chart (left) + Dashboard (right) */}
       <main className="flex-1 min-h-0 flex">
         <div className="w-1/2 p-3 min-h-0 overflow-hidden">
           <Chart interval={interval} />

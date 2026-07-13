@@ -1,6 +1,7 @@
+'use client'
 import { useMemo } from 'react'
-import { CandleUI } from '../types'
 import * as d3 from 'd3'
+import { CandleUI } from '../types'
 
 interface Props {
   width: number
@@ -9,7 +10,7 @@ interface Props {
   hoverX?: number
 }
 
-export const Volume = ({ width, height, candles, hoverX }: Props) => {
+export const Volume = ({ width, height, candles, hoverX }: Readonly<Props>) => {
   const margin = useMemo(
     () => ({ top: 5, right: 150, bottom: 20, left: 10 }),
     []
