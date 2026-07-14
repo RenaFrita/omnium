@@ -149,6 +149,7 @@ function connect(coin: string, intervals: string[]) {
       const asks = book.levels[1].map(mapLevel)
       orderFlow.processBook(book)
       self.postMessage({ type: 'ORDER_BOOK', bids, asks })
+      console.log(book.levels[0][0], book.levels[1][0])
     }
   }
 
