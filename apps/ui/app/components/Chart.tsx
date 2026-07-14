@@ -67,7 +67,7 @@ export const Chart = ({ interval }: Readonly<Props>) => {
     (e: React.MouseEvent) => {
       if (!containerRef.current || !visible.length) return
       const rect = containerRef.current.getBoundingClientRect()
-      const margin = { left: 10, right: 150 }
+      const margin = { left: 10, right: 70 }
       const innerWidth = width - margin.left - margin.right
       const mouseX = e.clientX - rect.left - margin.left
       if (mouseX < 0 || mouseX > innerWidth) {
