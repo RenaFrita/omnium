@@ -1,8 +1,7 @@
 'use client'
 import { useMemo } from 'react'
 import * as d3 from 'd3'
-import { CandleUI, AggressiveTrade } from '../types'
-import { useTradesStore } from '../stores/trades'
+import { CandleUI } from '../types'
 
 interface Props {
   candles: CandleUI[]
@@ -86,42 +85,23 @@ export const Candles = ({
 
   const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null
   const currentPrice = lastCandle ? lastCandle.c : 0
-  const priceColor = lastCandle ? (lastCandle.c >= lastCandle.o ? '#22c55e' : '#ef4444') : '#ffffff'
+  const priceColor = lastCandle
+    ? lastCandle.c >= lastCandle.o
+      ? '#22c55e'
+      : '#ef4444'
+    : '#ffffff'
 
   const tickCount = Math.max(8, Math.min(14, Math.floor(innerHeight / 45)))
-
-  const allTrades = useTradesStore((s) => s.trades)
-
-  const visibleTrades = useMemo(() => {
-    if (!x || !candles.length) return []
-    const t0 = candles[0].t
-    const t1 = candles[candles.length - 1].t
-    const inRange = allTrades.filter((t) => {
-      const ts = t.time < 1e12 ? t.time * 1000 : t.time
-      return ts >= t0 && ts <= t1
-    })
-    if (inRange.length < 10) return inRange
-    const sizes = inRange.map((t) => t.size).sort((a, b) => a - b)
-    const threshold = sizes[Math.floor(sizes.length * 0.75)]
-    return inRange.filter((t) => t.size >= threshold)
-  }, [allTrades, x, candles])
-
-  const tradePriceLinePath = useMemo(() => {
-    if (!x || !y || !visibleTrades.length) return null
-    const sorted = [...visibleTrades].sort((a, b) => a.time - b.time)
-    if (sorted.length < 2) return null
-    const line = d3
-      .line<AggressiveTrade>()
-      .x((d) => x(new Date(d.time < 1e12 ? d.time * 1000 : d.time)))
-      .y((d) => y(d.price))
-    return line(sorted)
-  }, [visibleTrades, x, y])
 
   if (!x || !y) return null
 
   return (
     <div style={{ width: '100%', height: '100%', contain: 'strict' }}>
-      <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
+      <svg
+        width={width}
+        height={height}
+        style={{ display: 'block', overflow: 'visible' }}
+      >
         <g transform={`translate(${margin.left},${margin.top})`}>
           <g opacity={0.05}>
             {y.ticks(tickCount).map((tick) => (
@@ -158,38 +138,40 @@ export const Candles = ({
               )
           )}
 
-          {currentPrice > 0 && y(currentPrice) > 0 && y(currentPrice) < innerHeight && (
-            <g>
-              <line
-                x1={0}
-                x2={innerWidth + 60}
-                y1={y(currentPrice)}
-                y2={y(currentPrice)}
-                stroke={priceColor}
-                strokeWidth={1}
-                strokeDasharray="4,3"
-                opacity={0.7}
-              />
-              <rect
-                x={innerWidth + 4}
-                y={y(currentPrice) - 8}
-                width={62}
-                height={16}
-                rx={3}
-                fill={priceColor}
-              />
-              <text
-                x={innerWidth + 8}
-                y={y(currentPrice) + 4}
-                fontSize="10"
-                fontWeight="bold"
-                fill="#fff"
-                textAnchor="start"
-              >
-                {d3.format(',.2f')(currentPrice)}
-              </text>
-            </g>
-          )}
+          {currentPrice > 0 &&
+            y(currentPrice) > 0 &&
+            y(currentPrice) < innerHeight && (
+              <g>
+                <line
+                  x1={0}
+                  x2={innerWidth + 60}
+                  y1={y(currentPrice)}
+                  y2={y(currentPrice)}
+                  stroke={priceColor}
+                  strokeWidth={1}
+                  strokeDasharray="4,3"
+                  opacity={0.7}
+                />
+                <rect
+                  x={innerWidth + 4}
+                  y={y(currentPrice) - 8}
+                  width={62}
+                  height={16}
+                  rx={3}
+                  fill={priceColor}
+                />
+                <text
+                  x={innerWidth + 8}
+                  y={y(currentPrice) + 4}
+                  fontSize="10"
+                  fontWeight="bold"
+                  fill="#fff"
+                  textAnchor="start"
+                >
+                  {d3.format(',.2f')(currentPrice)}
+                </text>
+              </g>
+            )}
 
           {candles.map((d) => {
             const isBullish = d.c >= d.o
@@ -243,18 +225,6 @@ export const Candles = ({
               </g>
             )
           })}
-
-          {tradePriceLinePath && (
-            <path
-              d={tradePriceLinePath}
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth={1}
-              opacity={0.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
 
           {hoverX !== undefined && (
             <line
